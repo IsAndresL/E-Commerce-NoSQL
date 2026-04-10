@@ -1,0 +1,87 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos de configuración local
+*.local
+
+# Logs
+*.log
+logs/
+
+# Archivos de base de datos local
+*.sqlite3
+*.db
+
+# Archivos temporales
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# IDEs / Editores
+.vscode/
+.idea/
+*.iml
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+
+# Ruff / linters
+.ruff_cache/
+
+# Distribución / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Docker
+*.pid
+*.seed
+
+# Archivos de AWS
+.aws/
+
+# Archivos de caché
+.cache/
+
+# Coverage reports
+coverage.xml
+
+# Archivos generados por herramientas
+pip-wheel-metadata/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Archivos de entorno de sistema
+*.envrc
+
+# Archivos de Redis dump (si se usa local)
+dump.rdb
