@@ -1,0 +1,25 @@
+services:
+  dynamodb:
+    image: amazon/dynamodb-local
+    container_name: dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /data"
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb_data:/data
+
+  awscli:
+    image: amazon/aws-cli
+    container_name: awscli
+    depends_on:
+      - dynamodb
+    entrypoint: /bin/sh
+    tty: true
+    stdin_open: true
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+
+volumes:
+  dynamodb_data:
