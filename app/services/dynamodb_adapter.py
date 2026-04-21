@@ -1,20 +1,16 @@
 import boto3
-from botocore.exceptions import ClientError
-from dotenv import load_dotenv
-import os
+from botocore.exceptions import BotoCoreError, ClientError
+from boto3.dynamodb.conditions import Key
 
-# Cargar variables de entorno desde .env
-load_dotenv()
+from app.core.config import get_settings
+from app.db.dynamodb import get_table
+
 
 class DynamoDBAdapter:
-    def __init__(self):
-        self.dynamodb = boto3.resource(
-            "dynamodb",
-            region_name=os.getenv("AWS_DEFAULT_REGION"),
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-        )
-        self.table = self.dynamodb.Table("ecommerce")
+    def __init__(self, table_name: str | None = None):
+        settings = get_settings()
+        self.table_name = table_name or settings.ecommerce_table_name
+        self.table = get_table(self.table_name)
 
     def get_item(self, key: dict):
         """
@@ -23,27 +19,41 @@ class DynamoDBAdapter:
         try:
             response = self.table.get_item(Key=key)
             return response.get("Item")
-        except ClientError as e:
+        except (ClientError, BotoCoreError) as e:
             print(f"Error fetching item: {e}")
             return None
 
-    def query_items(self, key_condition: dict, begins_with: str = None):
+    def query_items(
+        self,
+        partition_key_name: str,
+        partition_key_value: str,
+        sort_key_name: str | None = None,
+        begins_with: str | None = None,
+    ):
         """
-        Query items from the DynamoDB table based on key condition and optional sort key prefix.
+        Query items from the DynamoDB table using DynamoDB key expressions.
         """
         try:
-            key_expression = f"{list(key_condition.keys())[0]} = :pk"
-            expression_values = {":pk": key_condition[list(key_condition.keys())[0]]}
+            key_condition = Key(partition_key_name).eq(partition_key_value)
 
-            if begins_with:
-                key_expression += f" AND begins_with({list(key_condition.keys())[1]}, :sk)"
-                expression_values[":sk"] = begins_with
+            if sort_key_name and begins_with is not None:
+                key_condition = key_condition & Key(sort_key_name).begins_with(begins_with)
 
             response = self.table.query(
-                KeyConditionExpression=key_expression,
-                ExpressionAttributeValues=expression_values,
+                KeyConditionExpression=key_condition,
             )
             return response.get("Items", [])
-        except ClientError as e:
+        except (ClientError, BotoCoreError) as e:
             print(f"Error querying items: {e}")
             return []
+
+    def put_item(self, item: dict):
+        """
+        Store an item in the DynamoDB table.
+        """
+        try:
+            self.table.put_item(Item=item)
+            return item
+        except (ClientError, BotoCoreError) as e:
+            print(f"Error storing item: {e}")
+            return None
