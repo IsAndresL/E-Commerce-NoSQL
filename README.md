@@ -35,6 +35,10 @@ La interfaz web vive en `frontend/` y consume la API en `app/`. DynamoDB Local y
 
 El proyecto sigue una arquitectura modular basada en capas:
 
+Documentacion de flujo (cliente -> API -> DynamoDB):
+
+* Ver `README_FLUJO.md`
+
 ```
 app/
 ├── api/            # Endpoints (routes)
@@ -88,6 +92,48 @@ git clone <repo-url>
 cd <repo-name>
 ```
 
+2. Copiar archivo de variables del backend:
+
+```bash
+cp .env.example .env
+```
+
+3. Elegir modo de ejecucion.
+
+### Opcion A: Docker (recomendado)
+
+1. Levantar servicios:
+
+```bash
+docker compose up -d --build
+```
+
+2. Crear la tabla en DynamoDB Local (dentro del contenedor backend):
+
+```bash
+docker compose exec backend python -m scripts.create_table
+```
+
+3. Cargar datos iniciales (seed):
+
+```bash
+docker compose exec backend python -m scripts.seed_data
+```
+
+4. Abrir la aplicacion:
+
+* Frontend: [http://localhost:5173](http://localhost:5173)
+* Frontend con IDs: [http://localhost:5173/?user_id=1&order_id=555](http://localhost:5173/?user_id=1&order_id=555)
+* API (Docker): [http://localhost:8002/docs](http://localhost:8002/docs)
+
+### Opcion B: Manual (sin Docker para backend/frontend)
+
+1. Levantar solo DynamoDB Local y awscli:
+
+```bash
+docker compose up -d dynamodb-local awscli
+```
+
 2. Crear y activar entorno virtual:
 
 ```bash
@@ -96,11 +142,61 @@ source venv/bin/activate  # Linux/macOS
 venv\Scripts\activate     # Windows
 ```
 
-3. Configurar variables de entorno (`.env`):
+3. Instalar dependencias backend:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Crear la tabla `ecommerce`:
+
+```bash
+python -m scripts.create_table
+```
+
+5. Cargar datos iniciales (seed):
+
+```bash
+python -m scripts.seed_data
+```
+
+6. Ejecutar backend (manual):
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+7. Configurar frontend:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+`frontend/.env` debe tener (o mantener) este valor para modo manual:
 
 ```env
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
+VITE_API_PROXY_TARGET=http://localhost:8000
+```
+
+8. Ejecutar frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+9. Abrir la aplicacion:
+
+* Frontend: [http://localhost:5173](http://localhost:5173)
+* Frontend con IDs: [http://localhost:5173/?user_id=1&order_id=555](http://localhost:5173/?user_id=1&order_id=555)
+* API (manual): [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Variables de entorno del backend (`.env`)
+
+```env
+AWS_ACCESS_KEY_ID=local
+AWS_SECRET_ACCESS_KEY=local
 AWS_DEFAULT_REGION=us-east-1
 
 
@@ -113,48 +209,10 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 ```
 
-4. Configurar el frontend:
+Parametros del frontend:
 
-```bash
-cp frontend/.env.example frontend/.env
-```
-
-Si vas a correr en Docker, puedes dejar `VITE_API_PROXY_TARGET=http://backend:8000`. Si vas a correr localmente, el valor por defecto `http://localhost:8000` funciona.
-
-5. Levantar DynamoDB Local y awscli:
-
-```bash
-docker compose up -d dynamodb-local awscli
-```
-
-6. Crear la tabla `ecommerce`:
-
-```bash
-python scripts/create_table.py
-```
-
-7. Ejecutar el backend:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-8. Ejecutar el frontend:
-
-```bash
-cd frontend
-npm run dev
-```
-
-9. Abrir la interfaz:
-
-* Frontend: [http://localhost:5173](http://localhost:5173)
-* API root: [http://localhost:8002](http://localhost:8002) (o el puerto definido en `BACKEND_PORT`)
-* Datos del panel: [http://localhost:8002/ecommerce/dashboard-data](http://localhost:8002/ecommerce/dashboard-data) (o el puerto definido en `BACKEND_PORT`)
-* Perfil de usuario: [http://localhost:8002/ecommerce/user/1/profile](http://localhost:8002/ecommerce/user/1/profile)
-* Pedidos recientes: [http://localhost:8002/ecommerce/user/1/orders](http://localhost:8002/ecommerce/user/1/orders)
-* Detalle del pedido: [http://localhost:8002/ecommerce/order/555/details](http://localhost:8002/ecommerce/order/555/details)
-* Items del pedido: [http://localhost:8002/ecommerce/order/555/items](http://localhost:8002/ecommerce/order/555/items)
+* `user_id`: ID del usuario
+* `order_id`: ID de la orden/pedido
 
 ---
 
@@ -162,8 +220,10 @@ npm run dev
 
 FastAPI genera documentación automáticamente:
 
-* Swagger UI: [http://localhost:8002/docs](http://localhost:8002/docs)
-* ReDoc: [http://localhost:8002/redoc](http://localhost:8002/redoc)
+* Swagger UI (Docker): [http://localhost:8002/docs](http://localhost:8002/docs)
+* Swagger UI (Manual): [http://localhost:8000/docs](http://localhost:8000/docs)
+* ReDoc (Docker): [http://localhost:8002/redoc](http://localhost:8002/redoc)
+* ReDoc (Manual): [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ---
 
@@ -210,7 +270,7 @@ El diseño es responsivo y se adapta a escritorio y móvil.
 
 ## Arranque
 
-Levanta todo con Docker:
+Arranque rapido con Docker:
 
 ```bash
 docker compose up --build
@@ -226,17 +286,21 @@ Por defecto, este compose ya usa `8002` para evitar colisiones con procesos loca
 
 Tambien usa DynamoDB Local en modo `inMemory` para evitar bloqueos por archivos SQLite en desarrollo.
 
-Si prefieres correr localmente, usa el paso a paso anterior. La URL `/` del backend devuelve estado y enlaces útiles, mientras que el frontend vive en `http://localhost:5173`.
+Si prefieres correr localmente, usa la Opcion B de la seccion "Ejecución del Proyecto". El frontend vive en `http://localhost:5173`.
 
 ## Pruebas
 
 Para probar la API puedes usar:
 
 ```bash
-curl "http://localhost:8002/ecommerce/dashboard-data?user_id=1&order_id=555&demo=true"
+curl "http://localhost:8002/ecommerce/dashboard-data?user_id=1&order_id=555"
 ```
 
-Si levantaste con `BACKEND_PORT=8002`, usa ese puerto en el `curl`.
+En modo manual, usa el puerto `8000`:
+
+```bash
+curl "http://localhost:8000/ecommerce/dashboard-data?user_id=1&order_id=555"
+```
 
 Para probar DynamoDB Local desde `awscli`:
 

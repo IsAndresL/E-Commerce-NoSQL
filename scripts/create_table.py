@@ -1,4 +1,12 @@
+import sys
+from pathlib import Path
+from typing import Any
+
 import boto3
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from app.core.config import get_settings
 
@@ -19,7 +27,7 @@ def create_ecommerce_table():
     if settings.dynamodb_endpoint_url:
         dynamodb_kwargs["endpoint_url"] = settings.dynamodb_endpoint_url
 
-    dynamodb = boto3.resource("dynamodb", **dynamodb_kwargs)
+    dynamodb: Any = boto3.resource("dynamodb", **dynamodb_kwargs)
 
     table_name = settings.ecommerce_table_name
     existing_tables = dynamodb.meta.client.list_tables()["TableNames"]
