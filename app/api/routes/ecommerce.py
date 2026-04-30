@@ -79,11 +79,8 @@ async def get_user_order_items(user_id: str, order_id: str):
 
 
 @router.get("/dashboard-data", response_model=DashboardResponse)
-async def dashboard_data(
-    user_id: str = Query(default="1"),
-    order_id: str = Query(default="555"),
-):
-    return dashboard_service.build_dashboard(user_id=user_id, order_id=order_id)
+async def dashboard_data(user_id: str, order_id: str):
+    return await dashboard_service.get_dashboard_data(user_id, order_id)
 
 
 @router.get("/dashboard", include_in_schema=False)
