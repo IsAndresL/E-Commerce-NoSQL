@@ -41,3 +41,10 @@ export function getUserOrderItems(userId, orderId, signal) {
     { allow404: true },
   )
 }
+
+export function getDashboardData(userId, orderId, signal) {
+  return fetchJson(
+    `${API_BASE_URL}/ecommerce/dashboard-data?user_id=${encodeURIComponent(userId)}&order_id=${encodeURIComponent(orderId)}`,
+    signal,
+  )
+}

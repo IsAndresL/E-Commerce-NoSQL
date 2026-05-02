@@ -1,5 +1,3 @@
-
-
 # E-commerce API - Grupo 2
 
 API RESTful para un sistema de e-commerce construida con un enfoque moderno, escalable. El proyecto ahora incluye un frontend separado con React + Vite, una abstracción clara de la tabla `ecommerce` y un adaptador de acceso a DynamoDB.
@@ -290,7 +288,7 @@ Si prefieres correr localmente, usa la Opcion B de la seccion "Ejecución del Pr
 
 ## Pruebas
 
-Para probar la API puedes usar:
+Para probar el nuevo endpoint unificado:
 
 ```bash
 curl "http://localhost:8002/ecommerce/dashboard-data?user_id=1&order_id=555"
@@ -301,6 +299,8 @@ En modo manual, usa el puerto `8000`:
 ```bash
 curl "http://localhost:8000/ecommerce/dashboard-data?user_id=1&order_id=555"
 ```
+
+El endpoint devuelve un objeto `DashboardResponse` con los datos agregados.
 
 Para probar DynamoDB Local desde `awscli`:
 
