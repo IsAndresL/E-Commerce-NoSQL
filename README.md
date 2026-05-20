@@ -16,18 +16,16 @@ API RESTful para un sistema de e-commerce construida con un enfoque moderno, esc
 
 Este proyecto está construido utilizando las siguientes tecnologías:
 
-* **Backend:** Serverless (AWS Lambda + API Gateway HttpApi)
-* **Infraestructura:** AWS CDK (Infrastructure as Code)
+* **Backend Framework:** FastAPI
 * **Lenguaje:** Python 3.11+
 * **Base de datos principal:** DynamoDB (NoSQL)
 * **Cache / almacenamiento en memoria:** Redis
-* **SDK AWS:** boto3, aws-cdk-lib
+* **SDK AWS:** boto3
+* **Servidor ASGI:** Uvicorn
 * **Validación de datos:** Pydantic
 * **Gestión de configuración:** python-dotenv
-* **Frontend:** React 18 + Vite
-* **Emulación local:** LocalStack/Ministack (AWS Lambda, API Gateway, DynamoDB en Docker)
 
-La arquitectura ahora es **totalmente serverless**: los lambdas se invocan a través de **HTTP API Gateway** en lugar de FastAPI. Todo corre en Docker sin necesidad de instalar Python en tu máquina.
+La interfaz web vive en `frontend/` y consume la API en `app/`. DynamoDB Local y awscli quedan como soporte para pruebas locales.
 
 ---
 
@@ -60,162 +58,170 @@ app/
 
 ---
 
-## Instalación y ejecución
+## Dependencias
 
-**No necesitas instalar Python en tu máquina.** Todo corre con Docker.
+Instala las dependencias principales con:
 
-### Requisitos previos
+```bash
+pip install fastapi uvicorn boto3 redis pydantic python-dotenv
+```
 
-* Docker y Docker Compose instalados
-* `sudo` acceso para ejecutar Docker (o agregar tu usuario al grupo docker)
+Dependencias de desarrollo (opcional):
 
-### 1) Clonar el proyecto
+```bash
+pip install pytest httpx
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+```
+
+---
+
+## Ejecución del Proyecto
+
+1. Clonar el repositorio:
 
 ```bash
 git clone <repo-url>
-cd E-Commerce-NoSQL
+cd <repo-name>
 ```
 
-### 2) Preparar variables de entorno (opcional)
+2. Copiar archivo de variables del backend:
 
 ```bash
 cp .env.example .env
 ```
 
-### 3) Quick Start - Comando único
+3. Elegir modo de ejecucion.
 
-**Opción 1: Con Make (recomendado)**
+### Opcion A: Docker (recomendado)
 
-```bash
-make up           # Inicia todos los servicios
-make deploy       # Despliega lambdas y API Gateway con CDK
-make create-table # Crea tablas DynamoDB
-make seed         # Carga datos de prueba
-```
-
-Luego accede a: **http://localhost:5173**
-
-**Opción 2: Manual (sin Make)**
+1. Levantar servicios:
 
 ```bash
-# Inicia servicios
-sudo docker compose up -d ministack dynamodb-local redis
-sleep 5  # Espera a que ministack esté listo
-
-# Despliega infraestructura (lambdas + API Gateway)
-sudo docker compose run --rm --entrypoint /bin/sh \
-  -e AWS_ENDPOINT=http://ministack:4566 \
-  -e AWS_REGION=us-east-1 \
-  deployer -c 'cd infra && cdk deploy --require-approval never'
-
-# Crea tablas DynamoDB
-sudo docker compose run --rm --entrypoint /bin/sh \
-  -e AWS_ENDPOINT=http://ministack:4566 \
-  -e AWS_REGION=us-east-1 \
-  deployer -c 'python scripts/create_table.py'
-
-# Carga datos de prueba
-sudo docker compose run --rm --entrypoint /bin/sh \
-  -e AWS_ENDPOINT=http://ministack:4566 \
-  -e AWS_REGION=us-east-1 \
-  deployer -c 'python scripts/seed_data.py'
-
-# Inicia frontend
-sudo docker compose up -d frontend
+docker compose up -d --build
 ```
 
-### 4) Acceder a la aplicación
-
-* **Frontend:** [http://localhost:5173](http://localhost:5173)
-* **Frontend con datos específicos:** [http://localhost:5173/?user_id=1&order_id=555](http://localhost:5173/?user_id=1&order_id=555)
-* **Ministack/LocalStack:** http://localhost:4566 (API Gateway)
-* **DynamoDB Local:** http://localhost:8001
-
-### 5) Verificar que todo funciona
+2. Crear la tabla en DynamoDB Local (dentro del contenedor backend):
 
 ```bash
-# Listar funciones lambda deployadas
-sudo docker compose run --rm deployer \
-  aws --endpoint-url http://ministack:4566 lambda list-functions
-
-# Probar invocación directa de lambda
-sudo docker compose run --rm deployer \
-  aws --endpoint-url http://ministack:4566 lambda invoke \
-    --function-name ecommerce \
-    --payload '{"httpMethod":"GET","path":"/ecommerce/user/1/profile"}' \
-    /tmp/response.json && cat /tmp/response.json
+docker compose exec backend python -m scripts.create_table
 ```
 
-### Comandos útiles con Make
+3. Cargar datos iniciales (seed):
 
 ```bash
-make help         # Muestra todos los comandos disponibles
-make logs-frontend   # Ver logs del frontend
-make logs-ministack  # Ver logs de LocalStack
-make test-api     # Probar conectividad API Gateway
-make clean        # Eliminar contenedores y volúmenes
-make down         # Detener servicios sin eliminarlos
+docker compose exec backend python -m scripts.seed_data
 ```
 
-### Estructura de carpetas (Serverless)
+4. Abrir la aplicacion:
 
+* Frontend: [http://localhost:5173](http://localhost:5173)
+* Frontend con IDs: [http://localhost:5173/?user_id=1&order_id=555](http://localhost:5173/?user_id=1&order_id=555)
+* API (Docker): [http://localhost:8002/docs](http://localhost:8002/docs)
+
+### Opcion B: Manual (sin Docker para backend/frontend)
+
+1. Levantar solo DynamoDB Local y awscli:
+
+```bash
+docker compose up -d dynamodb-local awscli
 ```
-infra/
-├── app.py                 # CDK App (orquestador)
-├── api_stack.py          # Stack: Lambda + HTTP API routes
-├── persistence_stack.py  # Stack: DynamoDB
-├── core_stack.py         # Stack: Configuración base
-└── cdk.json             # Configuración CDK para LocalStack
 
-lambdas/
-├── ecommerce/           # Lambda handlers para e-commerce
-│   ├── handler.py       # Router principal (HTTP API entrypoint)
-│   ├── get_user_profile.py
-│   ├── get_recent_orders.py
-│   ├── get_order_details.py
-│   └── ...
-└── products/            # Lambda handlers para productos
-    ├── handler.py
-    └── list_products.py
+2. Crear y activar entorno virtual:
 
-scripts/
-├── deploy_ministack.sh  # Despliega CDK a LocalStack
-├── create_table.py      # Crea tablas DynamoDB
-├── seed_data.py         # Carga datos iniciales
-└── test_api_gateway.sh  # Valida conectividad API Gateway
-
-frontend/
-├── src/
-│   ├── App.jsx          # Componente principal
-│   ├── api/
-│   │   └── ecommerceApi.js  # Cliente fetch para lambdas
-│   └── components/
-│       └── dashboard/   # Componentes de UI
-└── vite.config.js       # Configuración proxy a ministack:4566
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+venv\Scripts\activate     # Windows
 ```
+
+3. Instalar dependencias backend:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Crear la tabla `ecommerce`:
+
+```bash
+python -m scripts.create_table
+```
+
+5. Cargar datos iniciales (seed):
+
+```bash
+python -m scripts.seed_data
+```
+
+6. Ejecutar backend (manual):
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+7. Configurar frontend:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+`frontend/.env` debe tener (o mantener) este valor para modo manual:
+
+```env
+VITE_API_PROXY_TARGET=http://localhost:8000
+```
+
+8. Ejecutar frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+9. Abrir la aplicacion:
+
+* Frontend: [http://localhost:5173](http://localhost:5173)
+* Frontend con IDs: [http://localhost:5173/?user_id=1&order_id=555](http://localhost:5173/?user_id=1&order_id=555)
+* API (manual): [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Variables de entorno del backend (`.env`)
+
+```env
 AWS_ACCESS_KEY_ID=local
 AWS_SECRET_ACCESS_KEY=local
 AWS_DEFAULT_REGION=us-east-1
-AWS_ENDPOINT=http://ministack:4566
+
+
+# Local
+DYNAMODB_ENDPOINT_URL=http://localhost:8001
+
+ECOMMERCE_TABLE_NAME=ecommerce
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
-Parámetros del frontend:
+Parametros del frontend:
 
 * `user_id`: ID del usuario
 * `order_id`: ID de la orden/pedido
 
-### Apagar el entorno local
+---
 
-```bash
-sudo docker compose down
-```
+## Documentación de la API
 
-### Documentación de la API
+FastAPI genera documentación automáticamente:
 
-La API vive en `lambdas/` y se expone a través de API Gateway local cuando usas `ministack`.
-
-* Endpoint local de pruebas: depende de la ruta montada en `infra/api_stack.py`
-* Para invocar directo, usa `aws lambda invoke` contra `http://ministack:4566`
+* Swagger UI (Docker): [http://localhost:8002/docs](http://localhost:8002/docs)
+* Swagger UI (Manual): [http://localhost:8000/docs](http://localhost:8000/docs)
+* ReDoc (Docker): [http://localhost:8002/redoc](http://localhost:8002/redoc)
+* ReDoc (Manual): [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ---
 
@@ -260,21 +266,72 @@ La pantalla principal del frontend agrupa:
 
 El diseño es responsivo y se adapta a escritorio y móvil.
 
-## Pruebas
+## Arranque
 
-Una vez levantado el entorno, puedes comprobar que DynamoDB responde:
+Arranque rapido con Docker:
 
 ```bash
-sudo docker compose run --rm --entrypoint /bin/sh -e AWS_ENDPOINT=http://ministack:4566 deployer -c 'aws --endpoint-url http://dynamodb-local:8000 dynamodb list-tables --no-cli-pager'
+docker compose up --build
 ```
 
-Si quieres verificar la API agregada desde el handler, puedes invocar directamente la lambda `ecommerce` con `aws lambda invoke` como se muestra arriba.
+Si el puerto `8000` esta ocupado, puedes levantar el backend en otro puerto del host:
 
-## Notas sobre Docker
+```bash
+BACKEND_PORT=8002 docker compose up --build
+```
 
-* El servicio `deployer` incluye Python, `awscli` y la CLI de CDK.
-* El servicio `ministack` usa la red Docker `ecommerce-net` para ejecutar las Lambdas.
-* Si el despliegue falla con permisos, antepone `sudo` a los comandos `docker compose`.
+Por defecto, este compose ya usa `8002` para evitar colisiones con procesos locales en `8000`.
+
+Tambien usa DynamoDB Local en modo `inMemory` para evitar bloqueos por archivos SQLite en desarrollo.
+
+Si prefieres correr localmente, usa la Opcion B de la seccion "Ejecución del Proyecto". El frontend vive en `http://localhost:5173`.
+
+## Pruebas
+
+Para probar el nuevo endpoint unificado:
+
+```bash
+curl "http://localhost:8002/ecommerce/dashboard-data?user_id=1&order_id=555"
+```
+
+En modo manual, usa el puerto `8000`:
+
+```bash
+curl "http://localhost:8000/ecommerce/dashboard-data?user_id=1&order_id=555"
+```
+
+El endpoint devuelve un objeto `DashboardResponse` con los datos agregados.
+
+Para probar DynamoDB Local desde `awscli`:
+
+```bash
+docker compose exec -T awscli aws dynamodb list-tables --endpoint-url http://dynamodb-local:8000 --no-cli-pager
+```
+
+---
+
+## Testing
+
+Para ejecutar pruebas:
+
+```bash
+pytest
+```
+
+---
+
+## Docker (Opcional)
+
+```dockerfile
+FROM python:3.11
+
+WORKDIR /app
+COPY . .
+
+RUN pip install fastapi uvicorn boto3 redis pydantic python-dotenv
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
 
 ---
 
