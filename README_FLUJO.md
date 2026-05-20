@@ -15,17 +15,16 @@ El cliente web en `frontend/src/App.jsx` hace llamadas HTTP a endpoints del back
 
 Estas llamadas se disparan en `useEffect` y luego se unen en un objeto `dashboard` para renderizar la UI.
 
-### Backend (FastAPI)
+### Backend (Serverless - AWS Lambda)
 
-El backend monta rutas en:
+La API se implementa como funciones Lambda y se puede exponer mediante API Gateway o invocación directa. Las rutas que antes estaban en `app/api/routes/` ahora son handlers en `lambdas/` (por ejemplo `lambdas/ecommerce/get_user_profile.py`).
 
-- `app/main.py`: registra routers
-- `app/api/routes/ecommerce.py`: define endpoints de ecommerce
+Rutas importantes/handlers:
 
-Rutas importantes:
-
-- `/profile`, `/orders`, `/details`, `/items` usan `ECommerceService`
-- La capa API no accede directo a `DynamoDBAdapter`
+- `lambdas/ecommerce/get_user_profile.py` -> `ECommerceService.get_user_profile`
+- `lambdas/ecommerce/get_recent_orders.py` -> `ECommerceService.get_recent_orders`
+- `lambdas/ecommerce/get_order_details.py` -> `ECommerceService.get_order_details`
+- `lambdas/ecommerce/get_order_items.py` -> `ECommerceService.get_order_items`
 
 ### Servicios de negocio
 
@@ -52,7 +51,7 @@ Rutas importantes:
 - `OrderItem`
 - `DashboardResponse`
 
-FastAPI usa estos modelos como `response_model`, por lo que el contrato API queda validado y documentado.
+Los modelos Pydantic se usan para los contratos internos y la validación. La validación de la API puede aplicarse en los handlers Lambda o mediante validadores de API Gateway.
 
 ### Repositorio de tabla
 
@@ -79,7 +78,7 @@ FastAPI usa estos modelos como `response_model`, por lo que el contrato API qued
 
 ```mermaid
 flowchart LR
-    A[Cliente React\nfrontend/src/App.jsx] --> B[FastAPI Router\napp/api/routes/ecommerce.py]
+    A[Cliente React\nfrontend/src/App.jsx] --> B[API Gateway / Lambda\nlambdas/ecommerce/get_user_profile.py]
     B --> C[ECommerceService\napp/services/ecommerce_service.py]
     C --> E[ECommerceTable\napp/repositories/ecommerce_table.py]
     E --> F[DynamoDBAdapter\napp/services/dynamodb_adapter.py]
@@ -101,7 +100,7 @@ flowchart LR
 El flujo queda asi:
 
 1. React consume endpoints REST.
-2. FastAPI recibe y delega en servicios.
+2. API Gateway / Lambda recibe y delega en servicios.
 3. Servicios aplican reglas y convierten a modelos.
 4. Repositorio abstrae patrones PK/SK.
 5. Adapter ejecuta operaciones DynamoDB.

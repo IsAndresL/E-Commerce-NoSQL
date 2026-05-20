@@ -1,0 +1,5 @@
+{
+  "app": "python -m infra.app",
+  "context": {
+  }
+}

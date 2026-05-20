@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,11 @@ def create_ecommerce_table():
     if settings.aws_secret_access_key:
         dynamodb_kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
 
-    if settings.dynamodb_endpoint_url:
+    # Allow overriding endpoint via AWS_ENDPOINT env var (useful from inside deployer container)
+    endpoint_override = os.environ.get("AWS_ENDPOINT")
+    if endpoint_override:
+        dynamodb_kwargs["endpoint_url"] = endpoint_override
+    elif settings.dynamodb_endpoint_url:
         dynamodb_kwargs["endpoint_url"] = settings.dynamodb_endpoint_url
 
     dynamodb: Any = boto3.resource("dynamodb", **dynamodb_kwargs)
