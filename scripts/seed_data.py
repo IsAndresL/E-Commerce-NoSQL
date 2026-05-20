@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -21,7 +22,18 @@ def _dynamodb_resource():
     if settings.aws_secret_access_key:
         kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
 
-    if settings.dynamodb_endpoint_url:
+    # Priority: AWS_ENDPOINT env var > settings > default
+    endpoint_override = os.environ.get("AWS_ENDPOINT")
+    if endpoint_override:
+        # AWS_ENDPOINT points to ministack (port 4566), but DynamoDB is on port 8000 in LocalStack
+        # Override with dynamodb-local which is the actual DynamoDB service
+        # Unless it's explicitly set to dynamodb-local already
+        if "dynamodb-local" not in endpoint_override:
+            # If it's pointing to ministack, redirect to dynamodb-local
+            kwargs["endpoint_url"] = endpoint_override.replace(":4566", "").replace("ministack", "dynamodb-local") + ":8000"
+        else:
+            kwargs["endpoint_url"] = endpoint_override
+    elif settings.dynamodb_endpoint_url:
         kwargs["endpoint_url"] = settings.dynamodb_endpoint_url
 
     return boto3.resource("dynamodb", **kwargs), settings.ecommerce_table_name
