@@ -115,3 +115,6 @@ pip-wheel-metadata/
 
 # Archivos de Redis dump (si se usa local)
 dump.rdb
+
+cdk.out/
+.deployer-built

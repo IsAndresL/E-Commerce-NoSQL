@@ -1,11 +1,13 @@
-FROM node:20-slim
+FROM node:22-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-venv python3-pip zip unzip curl build-essential \
+    && apt-get install -y --no-install-recommends \
+       python3 python3-venv python3-pip \
+       zip unzip curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m venv "$VIRTUAL_ENV" \
@@ -13,11 +15,9 @@ RUN python3 -m venv "$VIRTUAL_ENV" \
 
 WORKDIR /app
 
-# Copy project files (to allow pip installing requirements during image build)
 COPY . /app
 
-# Install Python deps and awscli + install CDK CLI via npm
-RUN pip install -r requirements.txt \
+RUN pip install -r infra/requirements.txt \
     && pip install awscli \
     && npm install -g aws-cdk
 

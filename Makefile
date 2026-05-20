@@ -1,4 +1,4 @@
-.PHONY: help up down deploy create-table seed test-api validate logs-frontend logs-ministack clean
+.PHONY: help up down bootstrap deploy create-table seed test-api validate logs-frontend logs-ministack clean
 
 help:
 	@echo "E-Commerce Serverless Docker Makefile"
@@ -37,14 +37,41 @@ down:
 	@sudo docker compose down
 	@echo "✓ Services stopped"
 
+bootstrap:
+	@echo "Bootstrapping CDK environment..."
+	@sudo docker compose run --rm --entrypoint /bin/sh \
+		-e AWS_ACCESS_KEY_ID=local \
+		-e AWS_SECRET_ACCESS_KEY=local \
+		-e AWS_DEFAULT_REGION=us-east-1 \
+		-e CDK_DEFAULT_ACCOUNT=000000000000 \
+		-e CDK_DEFAULT_REGION=us-east-1 \
+		-e AWS_ENDPOINT_URL=http://ministack:4566 \
+		deployer -c 'cdk bootstrap aws://000000000000/us-east-1'
+	@echo "✓ Bootstrap complete"
+
 deploy:
+	@echo "Limpiando cdk.out anterior..."
+	@sudo rm -rf cdk.out
 	@echo "Building deployer image..."
 	@sudo docker compose build deployer
+	@echo "Bootstrapping CDK..."
+	@sudo docker compose run --rm --entrypoint /bin/sh \
+		-e AWS_ACCESS_KEY_ID=local \
+		-e AWS_SECRET_ACCESS_KEY=local \
+		-e AWS_DEFAULT_REGION=us-east-1 \
+		-e CDK_DEFAULT_ACCOUNT=000000000000 \
+		-e CDK_DEFAULT_REGION=us-east-1 \
+		-e AWS_ENDPOINT_URL=http://ministack:4566 \
+		deployer -c 'cdk bootstrap aws://000000000000/us-east-1'
 	@echo "Deploying lambdas and API Gateway with CDK..."
 	@sudo docker compose run --rm --entrypoint /bin/sh \
-		-e AWS_ENDPOINT=http://ministack:4566 \
-		-e AWS_REGION=us-east-1 \
-		deployer -c 'cdk deploy --require-approval never'
+		-e AWS_ACCESS_KEY_ID=local \
+		-e AWS_SECRET_ACCESS_KEY=local \
+		-e AWS_DEFAULT_REGION=us-east-1 \
+		-e CDK_DEFAULT_ACCOUNT=000000000000 \
+		-e CDK_DEFAULT_REGION=us-east-1 \
+		-e AWS_ENDPOINT_URL=http://ministack:4566 \
+		deployer -c 'cdk deploy --all --require-approval never'
 	@echo "✓ Deployment complete"
 
 create-table:
