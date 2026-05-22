@@ -1,16 +1,12 @@
 from aws_cdk import App, Environment
 
-from infra.api_stack import ApiStack
-from infra.core_stack import CoreStack
-from infra.persistence_stack import PersistenceStack
+from infra.stack.lambda_stack import LambdaStack
+from infra.stack.persistence_stack import PersistenceStack
 
 # Cuenta dummy para LocalStack/ministack — CDK la requiere para resolver el entorno
-env = Environment(account="000000000000", region="us-east-1")
-
 app = App()
 
-core = CoreStack(app,        "EcommerceCore",        env=env)
-persistence = PersistenceStack(app, "EcommercePersistence", env=env)
-api = ApiStack(app,         "EcommerceApi",         env=env, persistence_table=persistence.table)
+persistence = PersistenceStack(app, "EcommercePersistence")
+api = LambdaStack(app, "EcommerceLambda", dynamo_table=persistence.table, redis_host="redis", redis_port="6379")
 
-app.synth()
+app.synth() 

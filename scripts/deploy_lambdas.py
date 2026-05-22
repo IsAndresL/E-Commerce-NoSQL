@@ -48,8 +48,7 @@ def create_function(lambda_name, zip_bytes, handler_module_name):
         "AWS_ACCESS_KEY_ID": "test",
         "AWS_SECRET_ACCESS_KEY": "test",
         "AWS_DEFAULT_REGION": "us-east-1",
-        # MiniStack service name in docker-compose is 'ministack'
-        "DYNAMODB_ENDPOINT_URL": "http://ministack:4566",
+        "AWS_ENDPOINT_URL": "http://ministack:4566",
         "ECOMMERCE_TABLE_NAME": "ecommerce",
         "REDIS_HOST": "redis",
         "REDIS_PORT": "6379",

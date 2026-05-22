@@ -13,53 +13,44 @@ services:
       retries: 10
       start_period: 5s
 
-  dynamodb-local:
-    image: amazon/dynamodb-local:latest
-    container_name: dynamodb-local
-    ports:
-      - "8001:8000"
-    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
-    networks:
-      - ecommerce-net
-    healthcheck:
-      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8000 && echo healthy || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-
-  awscli:
-    image: amazon/aws-cli:latest
-    container_name: awscli
-    depends_on:
-      dynamodb-local:
-        condition: service_healthy
-    environment:
-      AWS_ACCESS_KEY_ID: local
-      AWS_SECRET_ACCESS_KEY: local
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_ENDPOINT_URL: http://dynamodb-local:8000
-      AWS_PAGER: ""
-    entrypoint: ["tail", "-f", "/dev/null"]
-    networks:
-      - ecommerce-net
-
   ministack:
     image: ministackorg/ministack:latest
     container_name: infra_ministack
     ports:
       - "4566:4566"
-    environment:
-      LAMBDA_EXECUTOR: docker
-      DOCKER_NETWORK: ecommerce-net
-      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - lambda-docker-volume:/var/task
     networks:
-      - ecommerce-net
+      ecommerce-net:
+        ipv4_address: 10.0.2.20  # IP fija — devcontainer la usa como DNS
 
-  # backend service removed (now using Lambdas + LocalStack)
+  devcontainer:
+    build:
+      context: .
+      dockerfile: devcontainer/Dockerfile
+    container_name: ecommerce-devcontainer
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://10.0.2.20:4566
+      AWS_ENDPOINT_URL_S3: http://10.0.2.20:4566
+      CDK_DEFAULT_ACCOUNT: "000000000000"
+      CDK_DEFAULT_REGION: us-east-1
+      HOME: /tmp
+    dns:
+      - 10.0.2.20  # ministack actúa como DNS → resuelve *.ministack a su propia IP
+    depends_on:
+      - ministack
+    command: ["sleep", "infinity"]
+    networks:
+      - ecommerce-net
 
   frontend:
     image: node:22-alpine
@@ -70,28 +61,9 @@ services:
     volumes:
       - ./:/app
     environment:
-      VITE_API_PROXY_TARGET: http://ministack:4566
+      VITE_API_PROXY_TARGET: http://10.0.2.20:4566
     command: >
       sh -c "npm install && npm run dev -- --host 0.0.0.0"
-    networks:
-      - ecommerce-net
-
-  deployer:
-    build:
-      context: .
-      dockerfile: deployer/Dockerfile
-    container_name: ecommerce-deployer
-    working_dir: /app
-    volumes:
-      - ./:/app
-    environment:
-      AWS_ACCESS_KEY_ID: local
-      AWS_SECRET_ACCESS_KEY: local
-      AWS_DEFAULT_REGION: us-east-1
-    depends_on:
-      - ministack
-      - dynamodb-local
-      - redis
     networks:
       - ecommerce-net
 
@@ -99,8 +71,10 @@ networks:
   ecommerce-net:
     driver: bridge
     name: ecommerce-net
+    ipam:
+      config:
+        - subnet: 10.0.2.0/24  # requerido para asignar IPs fijas
 
 volumes:
   lambda-docker-volume:
     driver: local
-

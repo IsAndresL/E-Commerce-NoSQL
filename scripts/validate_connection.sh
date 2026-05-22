@@ -4,9 +4,10 @@
 
 set -e
 
-AWS_ENDPOINT="${AWS_ENDPOINT:-http://ministack:4566}"
+AWS_ENDPOINT_URL="${AWS_ENDPOINT_URL:-http://ministack:4566}"
+AWS_ENDPOINT="${AWS_ENDPOINT:-$AWS_ENDPOINT_URL}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
-DYNAMODB_ENDPOINT="${DYNAMODB_ENDPOINT:-http://dynamodb-local:8000}"
+DYNAMODB_ENDPOINT="${DYNAMODB_ENDPOINT:-$AWS_ENDPOINT_URL}"
 
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║  E-Commerce Frontend-Lambda Connection Validation         ║"
@@ -33,26 +34,27 @@ warn() {
 }
 
 echo "Checking endpoints..."
+echo "  AWS_ENDPOINT_URL: $AWS_ENDPOINT_URL"
 echo "  AWS_ENDPOINT: $AWS_ENDPOINT"
 echo "  DYNAMODB_ENDPOINT: $DYNAMODB_ENDPOINT"
 echo ""
 
 # 1. Check LocalStack/Ministack
-echo "1. Checking LocalStack connectivity..."
-if aws --endpoint-url "$AWS_ENDPOINT" lambda list-functions >/dev/null 2>&1; then
-  pass "LocalStack is responding at $AWS_ENDPOINT"
+echo "1. Checking MiniStack connectivity..."
+if aws --endpoint-url "$AWS_ENDPOINT_URL" lambda list-functions >/dev/null 2>&1; then
+  pass "MiniStack is responding at $AWS_ENDPOINT_URL"
 else
-  fail "Cannot connect to LocalStack at $AWS_ENDPOINT"
+  fail "Cannot connect to MiniStack at $AWS_ENDPOINT_URL"
   exit 1
 fi
 echo ""
 
 # 2. Check Lambda functions
 echo "2. Checking Lambda functions..."
-LAMBDA_COUNT=$(aws --endpoint-url "$AWS_ENDPOINT" --region "$AWS_REGION" lambda list-functions --query 'length(Functions)' --output text)
+LAMBDA_COUNT=$(aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" lambda list-functions --query 'length(Functions)' --output text)
 if [ "$LAMBDA_COUNT" -gt 0 ]; then
   pass "Found $LAMBDA_COUNT Lambda function(s)"
-  aws --endpoint-url "$AWS_ENDPOINT" --region "$AWS_REGION" lambda list-functions --query 'Functions[*].[FunctionName,State]' --output table
+  aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" lambda list-functions --query 'Functions[*].[FunctionName,State]' --output table
 else
   fail "No Lambda functions found (run: make deploy)"
   exit 1
@@ -61,13 +63,13 @@ echo ""
 
 # 3. Check HTTP API Gateway
 echo "3. Checking HTTP API Gateway..."
-API_COUNT=$(aws --endpoint-url "$AWS_ENDPOINT" --region "$AWS_REGION" apigatewayv2 get-apis --query 'length(Items)' --output text 2>/dev/null || echo "0")
+API_COUNT=$(aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" apigatewayv2 get-apis --query 'length(Items)' --output text 2>/dev/null || echo "0")
 if [ "$API_COUNT" -gt 0 ]; then
   pass "Found $API_COUNT HTTP API(s)"
-  API_ID=$(aws --endpoint-url "$AWS_ENDPOINT" --region "$AWS_REGION" apigatewayv2 get-apis --query 'Items[0].ApiId' --output text)
+  API_ID=$(aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" apigatewayv2 get-apis --query 'Items[0].ApiId' --output text)
   
   echo "   API Routes:"
-  aws --endpoint-url "$AWS_ENDPOINT" --region "$AWS_REGION" apigatewayv2 get-routes --api-id "$API_ID" \
+  aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" apigatewayv2 get-routes --api-id "$API_ID" \
     --query 'Items[*].[RouteKey,State]' --output table 2>/dev/null || true
 else
   fail "No HTTP APIs found (run: make deploy)"
@@ -96,13 +98,13 @@ echo ""
 # 5. Test Lambda invocation
 echo "5. Testing Lambda invocation (ecommerce function)..."
 TEMP_RESPONSE=$(mktemp)
-if aws --endpoint-url "$AWS_ENDPOINT" --region "$AWS_REGION" lambda invoke \
+if aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" lambda invoke \
   --function-name ecommerce \
   --payload '{"httpMethod": "GET", "path": "/ecommerce/user/test-user/profile", "headers": {}, "body": null, "pathParameters": {"user_id": "test-user"}}' \
   --log-type Tail \
   "$TEMP_RESPONSE" >/dev/null 2>&1; then
   
-  STATUS=$(aws --endpoint-url "$AWS_ENDPOINT" --region "$AWS_REGION" lambda invoke \
+  STATUS=$(aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" lambda invoke \
     --function-name ecommerce \
     --payload '{}' \
     /dev/null --query 'StatusCode' --output text 2>/dev/null || echo "200")

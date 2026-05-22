@@ -25,8 +25,8 @@ def create_ecommerce_table():
     if settings.aws_secret_access_key:
         dynamodb_kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
 
-    # Allow overriding endpoint via AWS_ENDPOINT env var (useful from inside deployer container)
-    endpoint_override = os.environ.get("AWS_ENDPOINT")
+    # Allow overriding endpoint via AWS_ENDPOINT_URL env var (MiniStack gateway)
+    endpoint_override = os.environ.get("AWS_ENDPOINT_URL") or os.environ.get("AWS_ENDPOINT")
     if endpoint_override:
         dynamodb_kwargs["endpoint_url"] = endpoint_override
     elif settings.dynamodb_endpoint_url:

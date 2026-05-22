@@ -99,7 +99,7 @@ Luego accede a: **http://localhost:5173**
 
 ```bash
 # Inicia servicios
-sudo docker compose up -d ministack dynamodb-local redis
+sudo docker compose up -d ministack redis
 sleep 5  # Espera a que ministack esté listo
 
 # Despliega infraestructura (lambdas + API Gateway)
@@ -129,7 +129,7 @@ sudo docker compose up -d frontend
 * **Frontend:** [http://localhost:5173](http://localhost:5173)
 * **Frontend con datos específicos:** [http://localhost:5173/?user_id=1&order_id=555](http://localhost:5173/?user_id=1&order_id=555)
 * **Ministack/LocalStack:** http://localhost:4566 (API Gateway)
-* **DynamoDB Local:** http://localhost:8001
+* **DynamoDB en MiniStack:** http://localhost:4566
 
 ### 5) Verificar que todo funciona
 
@@ -265,7 +265,7 @@ El diseño es responsivo y se adapta a escritorio y móvil.
 Una vez levantado el entorno, puedes comprobar que DynamoDB responde:
 
 ```bash
-sudo docker compose run --rm --entrypoint /bin/sh -e AWS_ENDPOINT=http://ministack:4566 deployer -c 'aws --endpoint-url http://dynamodb-local:8000 dynamodb list-tables --no-cli-pager'
+sudo docker compose run --rm --entrypoint /bin/sh -e AWS_ENDPOINT_URL=http://ministack:4566 deployer -c 'aws --endpoint-url http://ministack:4566 dynamodb list-tables --no-cli-pager'
 ```
 
 Si quieres verificar la API agregada desde el handler, puedes invocar directamente la lambda `ecommerce` con `aws lambda invoke` como se muestra arriba.
