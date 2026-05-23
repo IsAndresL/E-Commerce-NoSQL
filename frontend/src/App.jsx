@@ -1,80 +1,74 @@
-import React, { useEffect, useState } from "react";
-import { getDashboardData } from "./api/ecommerceApi";
-import OrderDetailsPanel from './components/dashboard/OrderDetailsPanel'
-import OrderItemsPanel from './components/dashboard/OrderItemsPanel'
-import OrdersPanel from './components/dashboard/OrdersPanel'
-import ProfilePanel from './components/dashboard/ProfilePanel'
-import StatsGrid from './components/dashboard/StatsGrid'
+import { useState } from "react";
+import Navbar from "./components/Navbar";
+import CartDrawer from "./components/CartDrawer";
+import StorePage from "./pages/StorePage";
+import DashboardPage from "./pages/DashboardPage";
+import { useCart } from "./hooks/useCart";
+import { useUserProfile } from "./hooks/useUserProfile";
 
-function App() {
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export default function App() {
+  const [page, setPage] = useState("store"); // "store" | "dashboard" | "cart"
+  const [cartOpen, setCartOpen] = useState(false);
+  const { profile } = useUserProfile("jgarcia");
+  const { items, addToCart, removeFromCart, updateQuantity, clearCart, total, count } = useCart();
 
-  const userId = new URLSearchParams(window.location.search).get("user_id");
-  const orderId = new URLSearchParams(window.location.search).get("order_id");
+  const handleAddToCart = (product) => {
+    addToCart(product);
+    setCartOpen(true);
+  };
 
-  useEffect(() => {
-    if (!userId || !orderId) {
-      setError("Faltan parámetros user_id y order_id en la URL");
-      setLoading(false);
-      return;
+  const handleNavigate = (dest) => {
+    if (dest === "cart") {
+      setCartOpen(true);
+    } else {
+      setPage(dest);
     }
-
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    getDashboardData(userId, orderId, signal)
-      .then((data) => {
-        setDashboard(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [userId, orderId]);
-
-  if (loading) {
-    return <div>Cargando datos del dashboard...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
-
-  if (!dashboard) {
-    return <div>No hay datos disponibles.</div>;
-  }
-
-  const { profile, orders, order_details, items } = dashboard;
+  };
 
   return (
-    <main className="app-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">AMAZONIA</p>
-          <h1>Panel de control</h1>
+    <div className="app">
+      <Navbar
+        cartCount={count}
+        user={profile}
+        activePage={page}
+        onNavigate={handleNavigate}
+      />
+
+      <main className="app-main">
+        {page === "store" && (
+          <StorePage onAddToCart={handleAddToCart} />
+        )}
+        {page === "dashboard" && (
+          <DashboardPage onNavigate={handleNavigate} />
+        )}
+        {page === "profile" && (
+          <DashboardPage onNavigate={handleNavigate} />
+        )}
+      </main>
+
+      <footer className="app-footer">
+        <div className="footer-links">
+          <button onClick={() => setPage("dashboard")}>Mis Pedidos</button>
+          <button>Soporte</button>
+          <button>Política de Privacidad</button>
         </div>
-      </section>
+        <span>© 2024 EcoCart Inc.</span>
+      </footer>
 
-      {error ? <div className="alert-card">{error}</div> : null}
-      {!loading && !error && !Object.keys(dashboard).length ? <div className="empty-state-card">No hay datos para mostrar.</div> : null}
-
-      <StatsGrid profile={profile} orders={orders} orderDetails={order_details} />
-
-      <section className="content-grid">
-        <ProfilePanel profile={profile} userId={userId} loading={loading} />
-        <OrdersPanel userId={userId} orders={orders} />
-        <OrderDetailsPanel orderDetails={order_details} />
-        <OrderItemsPanel orderId={orderId} items={items} />
-      </section>
-    </main>
+      {cartOpen && (
+        <CartDrawer
+          items={items}
+          total={total}
+          onUpdateQuantity={updateQuantity}
+          onRemove={removeFromCart}
+          onClose={() => setCartOpen(false)}
+          onCheckout={() => {
+            alert("¡Gracias por tu compra! (checkout no implementado aún)");
+            clearCart();
+            setCartOpen(false);
+          }}
+        />
+      )}
+    </div>
   );
 }
-
-export default App;

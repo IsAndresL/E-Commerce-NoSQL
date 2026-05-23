@@ -1,50 +1,31 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4566";
 
-async function fetchJson(url, signal, { allow404 = false } = {}) {
-  const response = await fetch(url, { signal })
-
-  if (allow404 && response.status === 404) {
-    return null
-  }
-
-  if (!response.ok) {
-    throw new Error(`Error ${response.status}`)
-  }
-
-  return response.json()
+async function apiFetch(path) {
+  const res = await fetch(`${BASE_URL}${path}`);
+  if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+  return res.json();
 }
 
-export function getUserProfile(userId, signal) {
-  return fetchJson(
-    `${API_BASE_URL}/ecommerce/user/${encodeURIComponent(userId)}/profile`,
-    signal,
-    { allow404: true },
-  )
-}
+export const getUserProfile = (userId) =>
+  apiFetch(`/ecommerce/user/${userId}/profile`);
 
-export function getUserOrders(userId, signal) {
-  return fetchJson(`${API_BASE_URL}/ecommerce/user/${encodeURIComponent(userId)}/orders`, signal)
-}
+export const getRecentOrders = (userId) =>
+  apiFetch(`/ecommerce/user/${userId}/orders`);
 
-export function getUserOrderDetails(userId, orderId, signal) {
-  return fetchJson(
-    `${API_BASE_URL}/ecommerce/user/${encodeURIComponent(userId)}/order/${encodeURIComponent(orderId)}/details`,
-    signal,
-    { allow404: true },
-  )
-}
+export const getOrderDetails = (orderId) =>
+  apiFetch(`/ecommerce/order/${orderId}/details`);
 
-export function getUserOrderItems(userId, orderId, signal) {
-  return fetchJson(
-    `${API_BASE_URL}/ecommerce/user/${encodeURIComponent(userId)}/order/${encodeURIComponent(orderId)}/items`,
-    signal,
-    { allow404: true },
-  )
-}
+export const getOrderItems = (orderId) =>
+  apiFetch(`/ecommerce/order/${orderId}/items`);
 
-export function getDashboardData(userId, orderId, signal) {
-  return fetchJson(
-    `${API_BASE_URL}/ecommerce/dashboard-data?user_id=${encodeURIComponent(userId)}&order_id=${encodeURIComponent(orderId)}`,
-    signal,
-  )
-}
+export const getUserOrderDetails = (userId, orderId) =>
+  apiFetch(`/ecommerce/user/${userId}/order/${orderId}/details`);
+
+export const getUserOrderItems = (userId, orderId) =>
+  apiFetch(`/ecommerce/user/${userId}/order/${orderId}/items`);
+
+export const getDashboardData = () =>
+  apiFetch(`/ecommerce/dashboard-data`);
+
+export const getProducts = () =>
+  apiFetch(`/products`);
