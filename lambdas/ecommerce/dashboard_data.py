@@ -1,6 +1,6 @@
-import json
 from app.services.ecommerce_dashboard_service import ECommerceDashboardService
 from app.services.ecommerce_service import ECommerceService
+from lambdas.handler import ok
 
 
 def lambda_handler(event, context):
@@ -12,4 +12,4 @@ def lambda_handler(event, context):
     svc = ECommerceDashboardService(ECommerceService())
     # dashboard service has async method; use build_dashboard (sync) for Lambda
     dashboard = svc.build_dashboard(user_id, order_id)
-    return {"statusCode": 200, "body": json.dumps(dashboard.model_dump()), "headers": {"Access-Control-Allow-Origin": "*"}}
+    return ok(dashboard)

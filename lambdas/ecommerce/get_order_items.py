@@ -1,5 +1,5 @@
-import json
 from app.services.ecommerce_service import ECommerceService
+from lambdas.handler import ok
 
 
 def lambda_handler(event, context):
@@ -10,4 +10,4 @@ def lambda_handler(event, context):
 
     service = ECommerceService()
     items = service.get_order_items(order_id)
-    return {"statusCode": 200, "body": json.dumps([i.model_dump() for i in items]), "headers": {"Access-Control-Allow-Origin": "*"}}
+    return ok(items)

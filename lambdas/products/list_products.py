@@ -1,8 +1,8 @@
-import json
 from app.services.product_service import ProductService
+from lambdas.handler import ok
 
 
 def lambda_handler(event, context):
     svc = ProductService()
     products = svc.list_products()
-    return {"statusCode": 200, "body": json.dumps(products), "headers": {"Access-Control-Allow-Origin": "*"}}
+    return ok(products)
