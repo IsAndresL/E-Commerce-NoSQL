@@ -16,7 +16,7 @@ _ASSET_EXCLUDE = [
     "scripts",
     "data",
     "build",
-    ".venv", "venv", "env",
+	"venv", "env",
     "__pycache__",
     "*.pyc",
     ".env",
