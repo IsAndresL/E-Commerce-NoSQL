@@ -118,3 +118,4 @@ dump.rdb
 
 cdk.out/
 .deployer-built
+.lambda_build
