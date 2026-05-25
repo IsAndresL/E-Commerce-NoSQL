@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-export default function Navbar({ cartCount, user, activePage, onNavigate }) {
+export default function Navbar({ cartCount, user, activePage, onNavigate, onLogout }) {
   const [showProfile, setShowProfile] = useState(false);
+  const userInitial = (user?.name || "?").trim().charAt(0).toUpperCase();
 
   return (
     <nav className="navbar">
@@ -37,11 +38,11 @@ export default function Navbar({ cartCount, user, activePage, onNavigate }) {
             onClick={() => setShowProfile((p) => !p)}
             aria-label="Perfil"
           >
-            <img
-              src={user?.avatar_url || `https://i.pravatar.cc/40?u=${user?.user_id}`}
-              alt={user?.name}
-              className="avatar-sm"
-            />
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user?.name} className="avatar-sm" />
+            ) : (
+              <span className="avatar-sm avatar-placeholder">{userInitial}</span>
+            )}
           </button>
 
           {showProfile && (
@@ -64,7 +65,15 @@ export default function Navbar({ cartCount, user, activePage, onNavigate }) {
                 👤 Mi Perfil
               </button>
               <hr />
-              <button className="dropdown-link logout">↩ Cerrar sesión</button>
+              <button
+                className="dropdown-link logout"
+                onClick={() => {
+                  setShowProfile(false);
+                  onLogout?.();
+                }}
+              >
+                ↩ Cerrar sesión
+              </button>
             </div>
           )}
         </div>

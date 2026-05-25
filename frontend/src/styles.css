@@ -117,6 +117,15 @@ body {
 
 .profile-dropdown {
   position: absolute; right: 0; top: calc(100% + 10px);
+.avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 700;
+  text-transform: uppercase;
+}
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 16px;
   min-width: 260px; box-shadow: var(--shadow-md);
@@ -128,6 +137,14 @@ body {
 }
 .dropdown-greeting { font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
 .dropdown-address { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; }
+.dropdown-user-switcher { margin-top: 8px; }
+.dropdown-switcher-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 8px 4px 6px;
+}
 .dropdown-link {
   display: block; width: 100%;
   background: none; border: none; cursor: pointer;
@@ -138,6 +155,7 @@ body {
 }
 .dropdown-link:hover { background: var(--surface-2); }
 .dropdown-link.logout { color: var(--error); margin-top: 4px; }
+.dropdown-user-btn { font-weight: 500; }
 hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
 
 /* ─── Store Page ─── */
@@ -460,6 +478,133 @@ hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
   font-size: 1.2rem; color: var(--text-muted);
 }
 
+/* ─── Login / Session ─── */
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 32px;
+  align-items: center;
+  padding: 40px 32px;
+  background:
+    radial-gradient(circle at top left, rgba(26, 107, 138, 0.18), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(245, 166, 35, 0.18), transparent 30%),
+    linear-gradient(180deg, #f8fafc 0%, #eef3f7 100%);
+}
+
+.login-hero {
+  max-width: 720px;
+  padding: 24px 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.login-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5vw, 4.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  max-width: 12ch;
+  margin-bottom: 18px;
+}
+
+.login-copy {
+  max-width: 56ch;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.login-panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(221, 226, 236, 0.8);
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-panel h2 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-bottom: 18px;
+}
+
+.user-card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.user-card {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: white;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.user-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+.user-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-card-body strong {
+  font-size: 0.98rem;
+}
+
+.user-card-body span {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.user-card-meta {
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-card-action {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 /* ─── Footer ─── */
 .app-footer {
   border-top: 1px solid var(--border);
@@ -483,4 +628,6 @@ hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
   .store-sidebar { display: none; }
   .cart-drawer { width: 100%; }
   .navbar-links { display: none; }
+  .login-page { grid-template-columns: 1fr; padding: 24px 16px 32px; }
+  .login-hero h1 { max-width: none; }
 }

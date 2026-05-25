@@ -4,10 +4,14 @@ from pydantic import BaseModel, Field
 
 
 class UserProfile(BaseModel):
+    user_id: str = "0"
     name: str = "Sin nombre"
     email: str = "sin-correo@local"
     addresses: list[str] = Field(default_factory=list)
     payments: list[str] = Field(default_factory=list)
+    payment_methods: list[str] = Field(default_factory=list)
+    avatar_url: str = ""
+    default_address: str = ""
 
 
 class OrderSummary(BaseModel):

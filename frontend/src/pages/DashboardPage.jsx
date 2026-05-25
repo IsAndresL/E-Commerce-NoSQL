@@ -3,8 +3,8 @@ import { useUserProfile } from "../hooks/useUserProfile";
 import { formatDate, statusColor, formatCOP } from "../utils/formatters";
 import { getOrderItems } from "../api/ecommerceApi";
 
-export default function DashboardPage({ onNavigate }) {
-  const { profile, orders, loading } = useUserProfile("jgarcia");
+export default function DashboardPage({ onNavigate, userId }) {
+  const { profile, orders, loading } = useUserProfile(userId);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderItems, setOrderItems] = useState([]);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -13,21 +13,28 @@ export default function DashboardPage({ onNavigate }) {
     setSelectedOrder(order);
     setLoadingOrder(true);
     try {
-      const items = await getOrderItems(order.order_id.replace("#", ""));
-      setOrderItems(Array.isArray(items) ? items : MOCK_ITEMS);
+      const orderKey = String(order.order_id || "").replace(/^[A-Z]+#/, "");
+      const items = await getOrderItems(orderKey);
+      setOrderItems(Array.isArray(items) ? items : []);
     } catch {
-      setOrderItems(MOCK_ITEMS);
+      setOrderItems([]);
     } finally {
       setLoadingOrder(false);
     }
   };
 
-  const MOCK_ITEMS = [
-    { product_id: "p1", name: "Laptop XPS", quantity: 1, unit_price: 1200000, subtotal: 1200000, image_url: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=60&h=60&fit=crop" },
-    { product_id: "p2", name: 'Libro "El Capital"', quantity: 2, unit_price: 25000, subtotal: 50000, image_url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=60&h=60&fit=crop" },
-  ];
+  if (loading) return <div className="loading-screen">Cargando perfil y pedidos...</div>;
 
-  if (loading) return <div className="loading-screen">Cargando...</div>;
+  if (!profile) {
+    return (
+      <div className="dashboard-page">
+        <h1 className="page-title">Mi Mercado Global — Panel de Control</h1>
+        <p className="empty-state-message">No se encontró el usuario.</p>
+      </div>
+    );
+  }
+
+  const profileInitial = (profile.name || "?").trim().charAt(0).toUpperCase();
 
   return (
     <div className="dashboard-page">
@@ -39,11 +46,11 @@ export default function DashboardPage({ onNavigate }) {
         <aside className="profile-card">
           <h2>Mi Perfil</h2>
           <div className="profile-header">
-            <img
-              src={profile.avatar_url || `https://i.pravatar.cc/80?u=${profile.user_id}`}
-              alt={profile.name}
-              className="avatar-lg"
-            />
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.name} className="avatar-lg" />
+            ) : (
+              <span className="avatar-lg avatar-placeholder">{profileInitial}</span>
+            )}
             <div>
               <p className="profile-name">{profile.name}</p>
               <p className="profile-email">{profile.email}</p>
@@ -109,6 +116,8 @@ export default function DashboardPage({ onNavigate }) {
             <h3>Ítems del Pedido</h3>
             {loadingOrder ? (
               <p>Cargando ítems...</p>
+            ) : orderItems.length === 0 ? (
+              <p className="empty-state-message">No se encontraron productos.</p>
             ) : (
               <table className="items-table">
                 <thead>

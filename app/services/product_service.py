@@ -21,13 +21,14 @@ class ProductService:
 
     def _normalize_product(self, item: Mapping[str, Any]) -> dict:
         return {
-            "id":          self._pick_str(item, "SK", default="").replace("PRODUCT#", ""),
+            "product_id":  self._pick_str(item, "product_id", "SK", default="").replace("PRODUCT#", ""),
+            "id":          self._pick_str(item, "product_id", "SK", default="").replace("PRODUCT#", ""),
             "name":        self._pick_str(item, "name", default="Sin nombre"),
             "price":       self._pick_number(item, "price", default=0),
             "stock":       self._pick_int(item, "stock", default=0),
             "category":    self._pick_str(item, "category", default="General"),
             "description": self._pick_str(item, "description", default=""),
-            "image":       self._pick_str(item, "image", default=""),
+            "image_url":   self._pick_str(item, "image_url", "image", default=""),
         }
 
     def _pick(self, data: Mapping[str, Any], *keys: str, default: Any = None) -> Any:

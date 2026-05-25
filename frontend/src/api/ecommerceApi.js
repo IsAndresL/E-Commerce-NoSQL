@@ -1,7 +1,16 @@
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = String(
+  import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:4566"
+).replace(/\/+$/, "");
+
+function buildUrl(path) {
+  const cleanPath = String(path || "").replace(/^\/+/, "");
+  return `${BASE_URL}/${cleanPath}`;
+}
 
 async function apiFetch(path) {
-  const res = await fetch(`${BASE_URL}${path}`);
+  const res = await fetch(buildUrl(path));
   if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
   return res.json();
 }
@@ -29,3 +38,6 @@ export const getDashboardData = () =>
 
 export const getProducts = () =>
   apiFetch(`/products`);
+
+export const getUsers = () =>
+  apiFetch(`/ecommerce/users`);

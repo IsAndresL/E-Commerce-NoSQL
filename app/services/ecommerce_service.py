@@ -16,6 +16,10 @@ class ECommerceService:
             return None
         return self._normalize_profile(profile)
 
+    def list_users(self) -> list[UserProfile]:
+        users = self.table.list_user_profiles() or []
+        return [self._normalize_profile(user) for user in users]
+
     def get_recent_orders(self, user_id: str) -> list[OrderSummary]:
         orders = self.table.get_recent_orders(user_id) or []
         return [self._normalize_order(order) for order in orders]
@@ -34,11 +38,17 @@ class ECommerceService:
         return self.table.user_has_order(user_id, order_id)
 
     def _normalize_profile(self, profile: Mapping[str, Any]) -> UserProfile:
+        payment_methods = self._pick_list(profile, "payment_methods", "payments", "Metodos de pago", default=["Sin metodos"])
+        raw_user_id = self._pick_str(profile, "PK", "user_id", default="0")
         return UserProfile(
+            user_id=raw_user_id.replace("USER#", ""),
             name=self._pick_str(profile, "name", "Nombre", "full_name", default="Sin nombre"),
             email=self._pick_str(profile, "email", "Correo", "correo", default="sin-correo@local"),
             addresses=self._pick_list(profile, "addresses", "Direcciones", "address", default=["Sin direccion"]),
-            payments=self._pick_list(profile, "payments", "Metodos de pago", "payment_methods", default=["Sin metodos"]),
+            payments=payment_methods,
+            payment_methods=payment_methods,
+            avatar_url=self._pick_str(profile, "avatar_url", "avatar", default=""),
+            default_address=self._pick_str(profile, "default_address", "Direccion principal", default=""),
         )
 
     def _normalize_order(self, order: Mapping[str, Any]) -> OrderSummary:

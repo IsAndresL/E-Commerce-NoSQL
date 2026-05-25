@@ -1,4 +1,5 @@
 import os
+from typing import cast
 from typing import Dict
 
 from aws_cdk import BundlingOptions, Duration, Stack, aws_dynamodb as dynamodb, aws_lambda as _lambda, CfnOutput
@@ -68,6 +69,7 @@ class LambdaStack(Stack):
         }
 
         handlers = {
+            "/ecommerce/users": "list_users",
             "/ecommerce/user/{user_id}/profile": "get_user_profile",
             "/ecommerce/user/{user_id}/orders": "get_recent_orders",
             "/ecommerce/order/{order_id}/details": "get_order_details",
@@ -118,7 +120,10 @@ class LambdaStack(Stack):
         )
 
         for path, fn in lambda_map.items():
-            integration = apigwv2_integrations.HttpLambdaIntegration(f"Integration_{fn.node.id}", fn)
+            integration = apigwv2_integrations.HttpLambdaIntegration(
+                f"Integration_{fn.node.id}",
+                cast(_lambda.IFunction, fn),
+            )
             http_api.add_routes(
                 path=path,
                 methods=[apigwv2.HttpMethod.GET],
@@ -126,5 +131,5 @@ class LambdaStack(Stack):
             )
 
         # Expose API URL and API id as CloudFormation outputs so deploy tooling can pick them up
-        CfnOutput(self, "ApiUrl", value=http_api.url)
+        CfnOutput(self, "ApiUrl", value=http_api.url or "")
         CfnOutput(self, "ApiId", value=http_api.api_id)

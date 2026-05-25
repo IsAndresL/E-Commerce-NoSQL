@@ -9,15 +9,24 @@ class ECommerceTable:
         key = {"PK": f"USER#{user_id}", "SK": "PROFILE"}
         return self.adapter.get_item(key)
 
+    def list_user_profiles(self):
+        from boto3.dynamodb.conditions import Attr
+
+        return self.adapter.scan_items(
+            Attr("PK").begins_with("USER#") & Attr("SK").eq("PROFILE")
+        )
+
     def get_recent_orders(self, user_id: str):
         return self.adapter.query_items("PK", f"USER#{user_id}", "SK", "ORDER#")
 
     def get_order_details(self, order_id: str):
-        key = {"PK": f"ORDER#{order_id}", "SK": "DETAILS"}
+        normalized = self._normalize_order_id(order_id)
+        key = {"PK": f"ORDER#{normalized}", "SK": "DETAILS"}
         return self.adapter.get_item(key)
 
     def get_order_items(self, order_id: str):
-        return self.adapter.query_items("PK", f"ORDER#{order_id}", "SK", "ITEM#")
+        normalized = self._normalize_order_id(order_id)
+        return self.adapter.query_items("PK", f"ORDER#{normalized}", "SK", "ITEM#")
 
     def user_has_order(self, user_id: str, order_id: str):
         target = self._normalize_order_id(order_id)

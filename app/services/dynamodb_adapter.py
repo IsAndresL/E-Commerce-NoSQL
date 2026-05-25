@@ -1,6 +1,7 @@
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr
 
 from app.core.config import get_settings
 from app.db.dynamodb import get_table
@@ -45,6 +46,21 @@ class DynamoDBAdapter:
             return response.get("Items", [])
         except (ClientError, BotoCoreError) as e:
             print(f"Error querying items: {e}")
+            return []
+
+    def scan_items(self, filter_expression=None):
+        """
+        Scan items from the DynamoDB table using an optional filter expression.
+        """
+        try:
+            kwargs = {}
+            if filter_expression is not None:
+                kwargs["FilterExpression"] = filter_expression
+
+            response = self.table.scan(**kwargs)
+            return response.get("Items", [])
+        except (ClientError, BotoCoreError) as e:
+            print(f"Error scanning items: {e}")
             return []
 
     def put_item(self, item: dict):
