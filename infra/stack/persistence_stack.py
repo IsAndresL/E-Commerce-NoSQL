@@ -1,4 +1,4 @@
-from aws_cdk import RemovalPolicy, Stack, aws_dynamodb as dynamodb
+from aws_cdk import RemovalPolicy, Stack, CfnOutput, aws_dynamodb as dynamodb
 from constructs import Construct
 
 
@@ -10,6 +10,8 @@ class PersistenceStack(Stack):
             self,
             "EcommerceTable",
             partition_key=dynamodb.Attribute(name="PK", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="SK",      type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
+        CfnOutput(self, "TableName", value=self.table.table_name)

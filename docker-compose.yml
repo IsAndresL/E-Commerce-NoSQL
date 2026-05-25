@@ -23,16 +23,14 @@ services:
       - lambda-docker-volume:/var/task
     networks:
       ecommerce-net:
-        ipv4_address: 10.0.2.20  # IP fija — devcontainer la usa como DNS
+        ipv4_address: 10.0.2.20  # IP fija — cdk-deployer la usa como DNS
 
-  devcontainer:
-    build:
-      context: .
-      dockerfile: devcontainer/Dockerfile
-    container_name: ecommerce-devcontainer
-    working_dir: /workspace
+  cdk-deployer:
+    image: node:22-alpine
+    container_name: ecommerce-cdk-deployer
+    working_dir: /home/capitan/Documentos/NoSql/E-Commerce-NoSQL
     volumes:
-      - ./:/workspace
+      - ./:/home/capitan/Documentos/NoSql/E-Commerce-NoSQL
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       AWS_ACCESS_KEY_ID: test
@@ -43,12 +41,14 @@ services:
       AWS_ENDPOINT_URL_S3: http://10.0.2.20:4566
       CDK_DEFAULT_ACCOUNT: "000000000000"
       CDK_DEFAULT_REGION: us-east-1
+      JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION: "1"
       HOME: /tmp
     dns:
-      - 10.0.2.20  # ministack actúa como DNS → resuelve *.ministack a su propia IP
+      - 10.0.2.20
+      - 8.8.8.8
     depends_on:
       - ministack
-    command: ["sleep", "infinity"]
+    command: ["tail", "-f", "/dev/null"]
     networks:
       - ecommerce-net
 

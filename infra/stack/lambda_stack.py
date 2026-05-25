@@ -1,7 +1,7 @@
 import os
 from typing import Dict
 
-from aws_cdk import Duration, Stack, aws_dynamodb as dynamodb, aws_lambda as _lambda, CfnOutput
+from aws_cdk import BundlingOptions, Duration, Stack, aws_dynamodb as dynamodb, aws_lambda as _lambda, CfnOutput
 from aws_cdk import aws_apigatewayv2 as apigwv2
 from aws_cdk import aws_apigatewayv2_integrations as apigwv2_integrations
 from constructs import Construct
@@ -16,7 +16,9 @@ _ASSET_EXCLUDE = [
     "scripts",
     "data",
     "build",
+	".infra_venv",
 	"venv", "env",
+	".venv",
     "__pycache__",
     "*.pyc",
     ".env",
@@ -42,7 +44,18 @@ class LambdaStack(Stack):
         super().__init__(scope, id, **kwargs)
 
         project_root = os.getcwd()
-        lambda_code = _lambda.Code.from_asset(project_root, exclude=_ASSET_EXCLUDE)
+        lambda_code = _lambda.Code.from_asset(
+            project_root,
+            exclude=_ASSET_EXCLUDE,
+            bundling=BundlingOptions(
+                image=_lambda.Runtime.PYTHON_3_11.bundling_image,
+                command=[
+                    "sh",
+                    "-lc",
+                    "PIP_ROOT_USER_ACTION=ignore PIP_DISABLE_PIP_VERSION_CHECK=1 python -m pip install --no-cache-dir -r /asset-input/requirements.txt -t /asset-output && cp -au /asset-input/app /asset-output/app && cp -au /asset-input/lambdas /asset-output/lambdas && cp -au /asset-input/requirements.txt /asset-output/requirements.txt",
+                ],
+            ),
+        )
 
         shared_env = {
             "TABLE_NAME": dynamo_table.table_name,

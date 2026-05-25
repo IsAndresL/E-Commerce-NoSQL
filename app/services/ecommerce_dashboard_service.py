@@ -47,7 +47,7 @@ class ECommerceDashboardService:
         cache_key = self.cache.build_key("dashboard", user_id, order_id)
         cached_dashboard = self.cache.get_json(cache_key)
         if cached_dashboard:
-            return DashboardResponse.model_validate(cached_dashboard)
+            return DashboardResponse.parse_obj(cached_dashboard)
 
         profile = self.ecommerce_service.get_user_profile(user_id) or UserProfile()
         orders = self.ecommerce_service.get_recent_orders(user_id)
@@ -71,7 +71,7 @@ class ECommerceDashboardService:
 
         self.cache.set_json(
             cache_key,
-            dashboard.model_dump(mode="json"),
+            dashboard.dict(),
             ttl_seconds=self.cache_ttl_seconds,
         )
 

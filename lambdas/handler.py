@@ -12,9 +12,11 @@ HEADERS = {
 def ok(data: Any) -> dict:
     if hasattr(data, "model_dump_json"):
         body = data.model_dump_json()
+    elif hasattr(data, "json") and hasattr(data, "dict"):
+        body = data.json()
     elif isinstance(data, list):
         body = json.dumps(
-            [item.model_dump() if hasattr(item, "model_dump") else item for item in data]
+            [item.model_dump() if hasattr(item, "model_dump") else item.dict() if hasattr(item, "dict") else item for item in data]
         )
     else:
         body = json.dumps(data)
