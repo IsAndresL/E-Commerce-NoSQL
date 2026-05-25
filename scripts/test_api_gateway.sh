@@ -65,7 +65,7 @@ aws_cmd lambda list-functions --query 'Functions[*].[FunctionName,State]' --outp
 # ── 3. API Gateway ────────────────────────────────────────────────────────────
 echo ""; echo "── 3. HTTP API Gateway ──────────────────────"
 API_ID=$(aws_cmd apigatewayv2 get-apis \
-    --query 'Items[?Name==`EcommerceHttpApi`].ApiId' --output text 2>/dev/null || echo "")
+    --query "Items[?Name=='EcommerceHttpApi'] | sort_by(@, &CreatedDate)[-1].ApiId" --output text 2>/dev/null || echo "")
 check "EcommerceHttpApi existe" "$([ -n "$API_ID" ] && [ "$API_ID" != "None" ] && echo ok || echo 'no encontrada')"
 if [ -n "$API_ID" ] && [ "$API_ID" != "None" ]; then
     yellow "  API ID: $API_ID"
@@ -78,8 +78,9 @@ fi
 
 # ── 4. DynamoDB ───────────────────────────────────────────────────────────────
 echo ""; echo "── 4. DynamoDB ──────────────────────────────"
-TABLE=$(aws_cmd dynamodb list-tables \
-    --query 'TableNames[?contains(@, `EcommercePersistence`)] | [0]' \
+TABLE=$(aws_cmd cloudformation describe-stacks \
+    --stack-name EcommercePersistence \
+    --query "Stacks[0].Outputs[?OutputKey=='TableName'].OutputValue | [0]" \
     --output text 2>/dev/null || echo "")
 check "Tabla CDK existe" "$([ -n "$TABLE" ] && [ "$TABLE" != "None" ] && echo ok || echo 'no encontrada')"
 if [ -n "$TABLE" ] && [ "$TABLE" != "None" ]; then
@@ -87,9 +88,9 @@ if [ -n "$TABLE" ] && [ "$TABLE" != "None" ]; then
     ITEM_COUNT=$(aws_cmd dynamodb scan --table-name "$TABLE" \
         --select COUNT --query 'Count' --output text 2>/dev/null || echo "0")
     check "Items en tabla ($ITEM_COUNT)" "$([ "$ITEM_COUNT" -gt 0 ] && echo ok || echo 'vacía — ejecuta make seed')"
-    PROD_COUNT=$(aws_cmd dynamodb query --table-name "$TABLE" \
-        --key-condition-expression "PK = :pk" \
-        --expression-attribute-values '{":pk":{"S":"PRODUCTS"}}' \
+    PROD_COUNT=$(aws_cmd dynamodb scan --table-name "$TABLE" \
+        --filter-expression "begins_with(PK, :pk)" \
+        --expression-attribute-values '{":pk":{"S":"PRODUCT#"}}' \
         --select COUNT --query 'Count' --output text 2>/dev/null || echo "0")
     check "Productos en tabla ($PROD_COUNT)" "$([ "$PROD_COUNT" -gt 0 ] && echo ok || echo 'sin productos — ejecuta make seed')"
 fi
@@ -97,7 +98,7 @@ fi
 # ── 5. Dependencias Lambda ────────────────────────────────────────────────────
 echo ""; echo "── 5. Lambda dependencies ───────────────────"
 PROFILE_FN=$(aws_cmd lambda list-functions \
-    --query 'Functions[?contains(FunctionName,`getuserprofile`)].FunctionName | [0]' \
+    --query "Functions[?contains(FunctionName, 'getuserprofile')] | sort_by(@, &LastModified)[-1].FunctionName" \
     --output text 2>/dev/null || echo "")
 
 if [ -n "$PROFILE_FN" ] && [ "$PROFILE_FN" != "None" ]; then
@@ -138,7 +139,7 @@ if [ -n "$PROFILE_FN" ] && [ "$PROFILE_FN" != "None" ]; then
 fi
 
 DASH_FN=$(aws_cmd lambda list-functions \
-    --query 'Functions[?contains(FunctionName,`dashboard`)].FunctionName | [0]' \
+    --query "Functions[?contains(FunctionName, 'dashboard')] | sort_by(@, &LastModified)[-1].FunctionName" \
     --output text 2>/dev/null || echo "")
 if [ -n "$DASH_FN" ] && [ "$DASH_FN" != "None" ]; then
     yellow "  $DASH_FN"
@@ -151,7 +152,7 @@ if [ -n "$DASH_FN" ] && [ "$DASH_FN" != "None" ]; then
 fi
 
 PROD_FN=$(aws_cmd lambda list-functions \
-    --query 'Functions[?contains(FunctionName,`Products`)].FunctionName | [0]' \
+    --query "Functions[?contains(FunctionName, 'Products')] | sort_by(@, &LastModified)[-1].FunctionName" \
     --output text 2>/dev/null || echo "")
 if [ -n "$PROD_FN" ] && [ "$PROD_FN" != "None" ]; then
     yellow "  $PROD_FN"

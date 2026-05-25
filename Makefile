@@ -81,6 +81,9 @@ create-table: wait-ministack
 seed: wait-ministack
 	@$(DOCKER_COMPOSE) exec -T -e ECOMMERCE_TABLE_NAME=$(GET_TABLE_NAME) $(DEPLOYER_ENV) cdk-deployer .infra_venv/bin/python3 scripts/seed_data.py
 
+test-api: wait-ministack
+	@$(DOCKER_COMPOSE) exec -T $(DEPLOYER_ENV) cdk-deployer sh -lc 'PATH="$$PWD/.infra_venv/bin:$$PATH" sh scripts/test_api_gateway.sh'
+
 clean:
 	@$(DOCKER_COMPOSE) down -v --remove-orphans
 	@sudo rm -rf cdk.out .infra_venv

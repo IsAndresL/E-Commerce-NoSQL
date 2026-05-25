@@ -1,5 +1,9 @@
 import boto3, os
 
+
+def _table_name() -> str:
+    return os.environ.get('ECOMMERCE_TABLE_NAME') or os.environ.get('TABLE_NAME', 'Ecommerce')
+
 def get_table():
     resource = boto3.resource(
         'dynamodb',
@@ -8,4 +12,4 @@ def get_table():
         aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID', 'local'),
         aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY', 'local'),
     )
-    return resource.Table(os.environ.get('TABLE_NAME', 'Ecommerce'))
+    return resource.Table(_table_name())

@@ -20,7 +20,7 @@ class Settings:
 	aws_secret_access_key: str | None = _first_env("AWS_SECRET_ACCESS_KEY", "AWS_SECRET_KEY")
 	aws_endpoint_url: str | None = _first_env("AWS_ENDPOINT_URL", "AWS_ENDPOINT")
 	dynamodb_endpoint_url: str | None = _first_env("DYNAMODB_ENDPOINT_URL", "DYNAMODB_ENDPOINT")
-	ecommerce_table_name: str = _first_env("ECOMMERCE_TABLE_NAME", default="ecommerce") or "ecommerce"
+	ecommerce_table_name: str = _first_env("ECOMMERCE_TABLE_NAME", "TABLE_NAME", default="ecommerce") or "ecommerce"
 	redis_host: str = _first_env("REDIS_HOST", default="localhost") or "localhost"
 	redis_port: int = int(_first_env("REDIS_PORT", default="6379") or "6379")
 	redis_db: int = int(_first_env("REDIS_DB", default="0") or "0")

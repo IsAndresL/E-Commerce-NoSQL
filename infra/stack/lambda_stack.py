@@ -59,6 +59,7 @@ class LambdaStack(Stack):
 
         shared_env = {
             "TABLE_NAME": dynamo_table.table_name,
+            "ECOMMERCE_TABLE_NAME": dynamo_table.table_name,
             "AWS_ENDPOINT_URL": "http://ministack:4566",
             "REDIS_HOST": redis_host,
             "REDIS_PORT": redis_port,
