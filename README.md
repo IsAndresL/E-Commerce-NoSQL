@@ -30,7 +30,7 @@ No necesitas instalar Python ni AWS CLI en tu máquina principal para usar el fl
 flowchart LR
 	subgraph Local[Docker Compose]
 		FE[frontend]
-		RD[redis]
+		RD[(redis cache)]
 		CDK[cdk-deployer\nCDK + Python + awscli]
 		MST[ministack\nAWS simulado]
 	end
@@ -38,11 +38,13 @@ flowchart LR
 	CDK -->|cdk deploy / cdk synth| MST
 	CDK -->|awscli: create-table, seed, test-api| MST
 	FE -->|HTTP API| MST
-	MST -->|Lambda + API Gateway + DynamoDB| FE
+	MST -->|API Gateway + Lambda| FE
+	MST -->|cache-aside| RD
+	RD -->|hit/miss| MST
 	CDK -. usa la red Docker y el endpoint local .-> MST
 ```
 
-El punto clave es que `cdk-deployer` es quien genera y publica la infraestructura, mientras que `ministack` simula los servicios de AWS que consumen las lambdas y la tabla DynamoDB.
+El punto clave es que `cdk-deployer` es quien genera y publica la infraestructura, mientras que `ministack` simula los servicios de AWS que consumen las lambdas, la tabla DynamoDB y la cache Redis.
 
 ## Flujo de despliegue local
 
