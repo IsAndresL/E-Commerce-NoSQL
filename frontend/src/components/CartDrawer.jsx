@@ -1,6 +1,9 @@
 import { formatCOP } from "../utils/formatters";
 
 export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, onClose, onCheckout }) {
+  const shipping = total >= 180000 ? 0 : items.length > 0 ? 14900 : 0;
+  const grandTotal = total + shipping;
+
   return (
     <div className="cart-overlay" onClick={onClose}>
       <aside className="cart-drawer" onClick={(e) => e.stopPropagation()}>
@@ -12,6 +15,11 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
         {items.length === 0 ? (
           <div className="cart-empty">
             <p>🛍 Tu carrito está vacío</p>
+            <div className="empty-trust">
+              <span>Pago seguro</span>
+              <span>Checkout como invitado</span>
+              <span>Mercado Pago · PayU · ePayco</span>
+            </div>
             <button className="btn-primary" onClick={onClose}>
               Explorar productos
             </button>
@@ -48,8 +56,28 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
                 <span>Total</span>
                 <span>{formatCOP(total)}</span>
               </div>
+              <div className="checkout-breakdown">
+                <div>
+                  <span>Envío estimado</span>
+                  <strong>{shipping === 0 ? "Gratis" : formatCOP(shipping)}</strong>
+                </div>
+                <div>
+                  <span>Seguridad y soporte</span>
+                  <strong>Incluidos</strong>
+                </div>
+                <div>
+                  <span>Total a pagar</span>
+                  <strong>{formatCOP(grandTotal)}</strong>
+                </div>
+              </div>
+              <div className="payment-badges">
+                <span>ePayco</span>
+                <span>Mercado Pago</span>
+                <span>PayU</span>
+              </div>
+              <p className="checkout-note">Compra como invitado o con cuenta. Mostramos costos antes de completar el pago.</p>
               <button className="btn-checkout" onClick={onCheckout}>
-                Proceder al pago →
+                Proceder al pago seguro →
               </button>
             </div>
           </>
