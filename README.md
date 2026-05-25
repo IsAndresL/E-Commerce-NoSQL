@@ -26,6 +26,24 @@ No necesitas instalar Python ni AWS CLI en tu máquina principal para usar el fl
 - `scripts/`: creación de tabla, seed, validaciones y utilidades.
 - `frontend/`: aplicación React + Vite.
 
+```mermaid
+flowchart LR
+	subgraph Local[Docker Compose]
+		FE[frontend]
+		RD[redis]
+		CDK[cdk-deployer\nCDK + Python + awscli]
+		MST[ministack\nAWS simulado]
+	end
+
+	CDK -->|cdk deploy / cdk synth| MST
+	CDK -->|awscli: create-table, seed, test-api| MST
+	FE -->|HTTP API| MST
+	MST -->|Lambda + API Gateway + DynamoDB| FE
+	CDK -. usa la red Docker y el endpoint local .-> MST
+```
+
+El punto clave es que `cdk-deployer` es quien genera y publica la infraestructura, mientras que `ministack` simula los servicios de AWS que consumen las lambdas y la tabla DynamoDB.
+
 ## Flujo de despliegue local
 
 Este es el flujo recomendado para levantar todo el entorno:
