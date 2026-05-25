@@ -3,37 +3,93 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Mapping
 
+from app.core.config import get_settings
+from app.db.redis import get_redis_cache
 from app.models.ecommerce import OrderDetails, OrderItem, OrderSummary, UserProfile
 from app.repositories.ecommerce_table import ECommerceTable
 
 
 class ECommerceService:
+    CACHE_VERSION = "v3"
+
     def __init__(self, table: ECommerceTable | None = None):
         self.table = table or ECommerceTable()
+        self.cache = get_redis_cache()
+        self.cache_ttl_seconds = get_settings().redis_cache_ttl_seconds
 
     def get_user_profile(self, user_id: str) -> UserProfile | None:
+        cache_key = self._cache_key("profile", user_id)
+        cached_profile = self.cache.get_json(cache_key)
+        if cached_profile:
+            return UserProfile.parse_obj(cached_profile)
+
         profile = self.table.get_user_profile(user_id)
         if not profile:
             return None
-        return self._normalize_profile(profile)
+        normalized = self._normalize_profile(profile)
+        self.cache.set_json(cache_key, normalized.dict(), ttl_seconds=self.cache_ttl_seconds)
+        return normalized
 
     def list_users(self) -> list[UserProfile]:
+        cache_key = self._cache_key("users", "list")
+        cached_users = self.cache.get_json(cache_key)
+        if isinstance(cached_users, list):
+            return [UserProfile.parse_obj(user) for user in cached_users]
+
         users = self.table.list_user_profiles() or []
-        return [self._normalize_profile(user) for user in users]
+        normalized_users = [self._normalize_profile(user) for user in users]
+        if normalized_users:
+            self.cache.set_json(
+                cache_key,
+                [user.dict() for user in normalized_users],
+                ttl_seconds=self.cache_ttl_seconds,
+            )
+        return normalized_users
 
     def get_recent_orders(self, user_id: str) -> list[OrderSummary]:
+        cache_key = self._cache_key("orders", user_id)
+        cached_orders = self.cache.get_json(cache_key)
+        if isinstance(cached_orders, list):
+            return [OrderSummary.parse_obj(order) for order in cached_orders]
+
         orders = self.table.get_recent_orders(user_id) or []
-        return [self._normalize_order(order) for order in orders]
+        normalized_orders = [self._normalize_order(order) for order in orders]
+        if normalized_orders:
+            self.cache.set_json(
+                cache_key,
+                [order.dict() for order in normalized_orders],
+                ttl_seconds=self.cache_ttl_seconds,
+            )
+        return normalized_orders
 
     def get_order_details(self, order_id: str) -> OrderDetails | None:
+        cache_key = self._cache_key("order-details", order_id)
+        cached_details = self.cache.get_json(cache_key)
+        if cached_details:
+            return OrderDetails.parse_obj(cached_details)
+
         details = self.table.get_order_details(order_id)
         if not details:
             return None
-        return self._normalize_order_details(details)
+        normalized = self._normalize_order_details(details)
+        self.cache.set_json(cache_key, normalized.dict(), ttl_seconds=self.cache_ttl_seconds)
+        return normalized
 
     def get_order_items(self, order_id: str) -> list[OrderItem]:
+        cache_key = self._cache_key("order-items", order_id)
+        cached_items = self.cache.get_json(cache_key)
+        if isinstance(cached_items, list):
+            return [OrderItem.parse_obj(item) for item in cached_items]
+
         items = self.table.get_order_items(order_id) or []
-        return [self._normalize_item(item) for item in items]
+        normalized_items = [self._normalize_item(item) for item in items]
+        if normalized_items:
+            self.cache.set_json(
+                cache_key,
+                [item.dict() for item in normalized_items],
+                ttl_seconds=self.cache_ttl_seconds,
+            )
+        return normalized_items
 
     def user_has_order(self, user_id: str, order_id: str) -> bool:
         return self.table.user_has_order(user_id, order_id)
@@ -111,3 +167,8 @@ class ECommerceService:
         if value in (None, ""):
             return default or []
         return [str(value)]
+
+    def _cache_key(self, kind: str, *parts: str) -> str:
+        suffix = ":".join(str(part).strip() for part in parts if str(part).strip())
+        base = f"ecommerce:{self.CACHE_VERSION}:{kind}"
+        return f"{base}:{suffix}" if suffix else base

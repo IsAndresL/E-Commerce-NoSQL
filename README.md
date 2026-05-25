@@ -153,6 +153,33 @@ La tabla usa claves `PK` y `SK` para modelar usuarios, pedidos y productos.
 - Detalle de pedido: `PK = ORDER#<ID>`, `SK = DETAILS`
 - Ítems de pedido: `PK = ORDER#<ID>`, `SK = ITEM#<ID>`
 
+## Estrategia de cache
+
+El proyecto usa un patrón de **cache-aside** con Redis para las lecturas más repetidas:
+
+- `GET /ecommerce/users`
+- `GET /ecommerce/user/{user_id}/profile`
+- `GET /ecommerce/user/{user_id}/orders`
+- `GET /ecommerce/order/{order_id}/details`
+- `GET /ecommerce/order/{order_id}/items`
+- `GET /products`
+- `GET /ecommerce/dashboard-data`
+
+La idea es simple: primero se consulta Redis; si hay un hit, se devuelve el dato cacheado. Si hay miss, se consulta DynamoDB, se normaliza la respuesta y se guarda en Redis con TTL.
+
+Este patrón encaja bien aquí por tres razones:
+
+- La app es mucho más de lectura que de escritura.
+- DynamoDB sigue siendo la fuente de verdad, así que el modelo no se complica.
+- El TTL evita que datos viejos vivan demasiado tiempo y hace fácil la consistencia eventual.
+
+Beneficios concretos:
+
+- Menor latencia en pantalla de login, perfil, pedidos y catálogo.
+- Menos lecturas a DynamoDB, con menos costo y menos presión sobre la tabla.
+- Mejor escalabilidad cuando varios usuarios consultan lo mismo varias veces.
+- Fallback natural: si Redis falla, el sistema sigue funcionando contra DynamoDB.
+
 ## Frontend
 
 El frontend corre en Vite y consume la API desplegada por CDK. Cuando `make deploy` termina, `frontend/.env` queda actualizado con la URL local correcta.

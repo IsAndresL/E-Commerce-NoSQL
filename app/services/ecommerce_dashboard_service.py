@@ -5,6 +5,8 @@ from app.services.ecommerce_service import ECommerceService
 
 
 class ECommerceDashboardService:
+    CACHE_VERSION = "v3"
+
     def __init__(
         self,
         ecommerce_service: ECommerceService | None = None,
@@ -15,7 +17,7 @@ class ECommerceDashboardService:
         self.cache_ttl_seconds = get_settings().redis_cache_ttl_seconds
 
     async def get_dashboard_data(self, user_id: str, order_id: str):
-        cache_key = f"dashboard:{user_id}:{order_id}"
+        cache_key = f"dashboard:{self.CACHE_VERSION}:{user_id}:{order_id}"
         cached = await self.cache.get(cache_key)
         if cached:
             return cached  # ya es un DashboardResponse serializado
@@ -44,7 +46,7 @@ class ECommerceDashboardService:
         return dashboard
 
     def build_dashboard(self, user_id: str, order_id: str) -> DashboardResponse:
-        cache_key = self.cache.build_key("dashboard", user_id, order_id)
+        cache_key = self.cache.build_key(f"dashboard:{self.CACHE_VERSION}", user_id, order_id)
         cached_dashboard = self.cache.get_json(cache_key)
         if cached_dashboard:
             return DashboardResponse.parse_obj(cached_dashboard)

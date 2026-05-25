@@ -2,22 +2,47 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from app.core.config import get_settings
+from app.db.redis import get_redis_cache
 from app.repositories.product_repo import ProductRepository
 
 
 class ProductService:
+    CACHE_VERSION = "v3"
+
     def __init__(self, repo: ProductRepository | None = None):
         self.repo = repo or ProductRepository()
+        self.cache = get_redis_cache()
+        self.cache_ttl_seconds = get_settings().redis_cache_ttl_seconds
 
     def list_products(self) -> list[dict]:
+        cache_key = f"ecommerce:{self.CACHE_VERSION}:products:list"
+        cached_products = self.cache.get_json(cache_key)
+        if isinstance(cached_products, list):
+            return [self._normalize_product(item) for item in cached_products]
+
         items = self.repo.list_products() or []
-        return [self._normalize_product(item) for item in items]
+        normalized_products = [self._normalize_product(item) for item in items]
+        if normalized_products:
+            self.cache.set_json(
+                cache_key,
+                normalized_products,
+                ttl_seconds=self.cache_ttl_seconds,
+            )
+        return normalized_products
 
     def get_product(self, product_id: str) -> dict | None:
+        cache_key = f"ecommerce:{self.CACHE_VERSION}:products:{product_id}"
+        cached_product = self.cache.get_json(cache_key)
+        if isinstance(cached_product, dict):
+            return self._normalize_product(cached_product)
+
         item = self.repo.get_product(product_id)
         if not item:
             return None
-        return self._normalize_product(item)
+        normalized_product = self._normalize_product(item)
+        self.cache.set_json(cache_key, normalized_product, ttl_seconds=self.cache_ttl_seconds)
+        return normalized_product
 
     def _normalize_product(self, item: Mapping[str, Any]) -> dict:
         return {

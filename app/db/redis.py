@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import aioredis
 import json
 from typing import Any
 
+import redis.asyncio as aioredis
 from redis import Redis
 from redis.exceptions import RedisError
 
@@ -23,10 +23,16 @@ class RedisCache:
 		self._redis = None
 		self.host = settings.redis_host
 		self.port = settings.redis_port
+		self.db = settings.redis_db
 
 	async def connect(self):
 		if not self._redis:
-			self._redis = await aioredis.create_redis_pool((self.host, self.port), encoding="utf-8")
+			self._redis = aioredis.Redis(
+				host=self.host,
+				port=self.port,
+				db=self.db,
+				decode_responses=True,
+			)
 
 	def build_key(self, kind: str, *parts: Any) -> str:
 		suffix = ":".join(str(part) for part in parts if part not in (None, ""))
@@ -42,7 +48,7 @@ class RedisCache:
 
 	async def set(self, key, value, ex=120):
 		await self.connect()
-		await self._redis.set(key, json.dumps(value, default=str), expire=ex)
+		await self._redis.set(key, json.dumps(value, default=str), ex=ex)
 
 	def get_json(self, key: str) -> dict[str, Any] | list[Any] | None:
 		try:
@@ -69,7 +75,6 @@ class RedisCache:
 			return
 
 
-# Singleton para obtener la instancia
 _cache = None
 
 
@@ -83,6 +88,6 @@ def get_redis_cache():
 				port=settings.redis_port,
 				db=settings.redis_db,
 				decode_responses=True,
-			)
+		)
 		)
 	return _cache
