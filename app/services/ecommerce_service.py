@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any, Mapping
 
 from app.models.ecommerce import OrderDetails, OrderItem, OrderSummary, UserProfile
@@ -71,6 +72,7 @@ class ECommerceService:
 
     def _normalize_item(self, item: Mapping[str, Any]) -> OrderItem:
         return OrderItem(
+            product_id=self._pick_str(item, "product_id", "id", default=""),
             name=self._pick_str(item, "name", "Nombre", "product_name", default="Producto"),
             quantity=self._pick_quantity(item, "quantity", "Cantidad", default="1"),
             unit_price=self._pick_number_like(item, "unit_price", "Precio", "Precio_Unitario_Compra", default="0"),
@@ -89,16 +91,16 @@ class ECommerceService:
         return str(value) if value not in (None, "") else default
 
     def _pick_number_like(
-        self, data: Mapping[str, Any], *keys: str, default: str | int | float
-    ) -> str | int | float:
+        self, data: Mapping[str, Any], *keys: str, default: str | int | float | Decimal
+    ) -> str | int | float | Decimal:
         value = self._pick(data, *keys, default=default)
-        if isinstance(value, (str, int, float)):
+        if isinstance(value, (str, int, float, Decimal)):
             return value
         return default
 
-    def _pick_quantity(self, data: Mapping[str, Any], *keys: str, default: str | int) -> str | int:
+    def _pick_quantity(self, data: Mapping[str, Any], *keys: str, default: str | int | Decimal) -> str | int | Decimal:
         value = self._pick(data, *keys, default=default)
-        if isinstance(value, (str, int)):
+        if isinstance(value, (str, int, Decimal)):
             return value
         return default
 

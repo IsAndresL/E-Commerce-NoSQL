@@ -31,6 +31,7 @@ class OrderDetails(BaseModel):
 
 
 class OrderItem(BaseModel):
+    product_id: str = ""
     name: str = "Producto"
     quantity: str | int = "1"
     unit_price: str | int | float = "0"

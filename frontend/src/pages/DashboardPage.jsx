@@ -13,7 +13,7 @@ export default function DashboardPage({ onNavigate, userId }) {
     setSelectedOrder(order);
     setLoadingOrder(true);
     try {
-      const orderKey = String(order.order_id || "").replace(/^[A-Z]+#/, "");
+      const orderKey = String(order.order_id || order.id || "").replace(/^[A-Z]+#/, "");
       const items = await getOrderItems(orderKey);
       setOrderItems(Array.isArray(items) ? items : []);
     } catch {
@@ -130,7 +130,7 @@ export default function DashboardPage({ onNavigate, userId }) {
                 </thead>
                 <tbody>
                   {orderItems.map((item) => (
-                    <tr key={item.product_id}>
+                    <tr key={item.product_id || `${item.name}-${item.quantity}-${item.unit_price}`}>
                       <td className="item-name-cell">
                         {item.image_url && (
                           <img src={item.image_url} alt={item.name} className="item-thumb" />

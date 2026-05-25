@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
 import { getUserProfile, getRecentOrders } from "../api/ecommerceApi";
+
+const normalizeOrder = (order) => ({
+  order_id: order?.order_id || order?.id || "ORD#000",
+  status: order?.status || "Pendiente",
+  created_at: order?.created_at || order?.createdAt || order?.date || "-",
+  shipping_address: order?.shipping_address || order?.shippingAddress || "-",
+  total: order?.total ?? 0,
+});
+
 export function useUserProfile(userId) {
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -27,7 +36,7 @@ export function useUserProfile(userId) {
       if (cancelled) return;
 
       setProfile(profileData || null);
-      setOrders(Array.isArray(ordersData) ? ordersData : []);
+      setOrders(Array.isArray(ordersData) ? ordersData.map(normalizeOrder) : []);
       setLoading(false);
     });
 
