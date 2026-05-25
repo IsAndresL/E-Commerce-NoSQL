@@ -1,262 +1,165 @@
-# E-commerce API - Grupo 2
+# E-commerce NoSQL
 
-API RESTful para un sistema de e-commerce construida con un enfoque moderno, escalable. El proyecto ahora incluye un frontend separado con React + Vite, una abstracción clara de la tabla `ecommerce` y un adaptador de acceso a DynamoDB.
+Backend serverless para e-commerce con AWS Lambda, API Gateway HTTP API, DynamoDB y Redis, más un frontend separado en React + Vite. El proyecto está pensado para correr localmente con Docker y MiniStack, y para desplegarse con AWS CDK desde el contenedor `cdk-deployer`.
 
----
+## Qué incluye
 
-## Colaboradores
+- API serverless en Python 3.11.
+- Infraestructura como código con AWS CDK.
+- Persistencia en DynamoDB con una tabla principal de tipo single-table.
+- Cache con Redis.
+- Frontend independiente en `frontend/`.
+- Scripts de despliegue, seed y validación en `scripts/`.
 
-* Farit Teran
-* Andres Luna
-* Daniel Ortiz
+## Requisitos
 
----
+- Docker y Docker Compose.
+- `sudo` acceso para ejecutar Docker, o usuario en el grupo `docker`.
 
-## Stack Tecnológico
+No necesitas instalar Python ni AWS CLI en tu máquina principal para usar el flujo normal del proyecto. Las dependencias de infraestructura se preparan dentro del contenedor `cdk-deployer`.
 
-Este proyecto está construido utilizando las siguientes tecnologías:
+## Estructura
 
-* **Backend:** Serverless (AWS Lambda + API Gateway HttpApi)
-* **Infraestructura:** AWS CDK (Infrastructure as Code)
-* **Lenguaje:** Python 3.11+
-* **Base de datos principal:** DynamoDB (NoSQL)
-* **Cache / almacenamiento en memoria:** Redis
-* **SDK AWS:** boto3, aws-cdk-lib
-* **Validación de datos:** Pydantic
-* **Gestión de configuración:** python-dotenv
-* **Frontend:** React 18 + Vite
-* **Emulación local:** LocalStack/Ministack (AWS Lambda, API Gateway, DynamoDB en Docker)
+- `infra/`: stacks de CDK y configuración de despliegue.
+- `lambdas/`: handlers de API Gateway.
+- `app/`: servicios, repositorios, configuración y adaptadores compartidos.
+- `scripts/`: creación de tabla, seed, validaciones y utilidades.
+- `frontend/`: aplicación React + Vite.
 
-La arquitectura ahora es **totalmente serverless**: los lambdas se invocan a través de **HTTP API Gateway** en lugar de FastAPI. Todo corre en Docker sin necesidad de instalar Python en tu máquina.
+## Flujo de despliegue local
 
----
-
-## Arquitectura
-
-El proyecto sigue una arquitectura modular basada en capas:
-
-Documentacion de flujo (cliente -> API -> DynamoDB):
-
-* Ver `README_FLUJO.md`
-
-```
-app/
-├── api/            # Endpoints (routes)
-├── services/       # Lógica de negocio
-├── repositories/   # Abstracción de la tabla Ecommerce
-├── models/         # Esquemas (Pydantic)
-├── db/             # Conexiones (DynamoDB, Redis)
-├── core/           # Configuración global
-└── main.py         # Punto de entrada
-```
-
-### Capas clave
-
-* `app/services/dynamodb_adapter.py`: adaptador genérico para DynamoDB.
-* `app/repositories/ecommerce_table.py`: abstracción de la tabla `ecommerce` y sus patrones de acceso.
-* `app/services/ecommerce_dashboard_service.py`: preparación de datos para el panel de control.
-* `app/api/routes/ecommerce.py`: endpoints JSON y vista legacy de apoyo.
-* `frontend/`: frontend separado en React + Vite.
-
----
-
-## Instalación y ejecución
-
-**No necesitas instalar Python en tu máquina.** Todo corre con Docker.
-
-### Requisitos previos
-
-* Docker y Docker Compose instalados
-* `sudo` acceso para ejecutar Docker (o agregar tu usuario al grupo docker)
-
-### 1) Clonar el proyecto
+Este es el flujo recomendado para levantar todo el entorno:
 
 ```bash
-git clone <repo-url>
-cd E-Commerce-NoSQL
+make up
+make deploy
+make create-table
+make seed
 ```
 
-### 2) Preparar variables de entorno (opcional)
+Si quieres validar la API después del despliegue:
 
 ```bash
-cp .env.example .env
+make test-api
 ```
 
-### 3) Quick Start - Comando único
-
-**Opción 1: Con Make (recomendado)**
+Si quieres ver los logs:
 
 ```bash
-make up           # Inicia todos los servicios
-make deploy       # Despliega lambdas y API Gateway con CDK
-make create-table # Crea tablas DynamoDB
-make seed         # Carga datos de prueba
+make logs-ministack
+make logs-frontend
 ```
 
-Luego accede a: **http://localhost:5173**
+## Comandos principales
 
-**Opción 2: Manual (sin Make)**
+- `make up`: levanta `ministack`, `cdk-deployer`, `redis` y `frontend`.
+- `make deploy`: ejecuta `cdk deploy` y escribe `frontend/.env` con la URL real de la API.
+- `make create-table`: crea la tabla DynamoDB del proyecto.
+- `make seed`: carga datos de prueba en la tabla correcta.
+- `make test-api`: verifica que API Gateway y las lambdas respondan.
+- `make clean`: detiene el entorno y elimina volúmenes y `cdk.out`.
+
+## Pasos detallados
+
+### 1. Levantar servicios
 
 ```bash
-# Inicia servicios
-sudo docker compose up -d ministack redis
-sleep 5  # Espera a que ministack esté listo
+make up
+```
 
-# Despliega infraestructura (lambdas + API Gateway)
-sudo docker compose run --rm --entrypoint /bin/sh \
-  -e AWS_ENDPOINT=http://ministack:4566 \
-  -e AWS_REGION=us-east-1 \
-  deployer -c 'cd infra && cdk deploy --require-approval never'
+Esto inicia MiniStack, el contenedor de despliegue, Redis y el frontend.
 
-# Crea tablas DynamoDB
-sudo docker compose run --rm --entrypoint /bin/sh \
-  -e AWS_ENDPOINT=http://ministack:4566 \
-  -e AWS_REGION=us-east-1 \
-  deployer -c 'python scripts/create_table.py'
+### 2. Desplegar infraestructura
 
-# Carga datos de prueba
-sudo docker compose run --rm --entrypoint /bin/sh \
-  -e AWS_ENDPOINT=http://ministack:4566 \
-  -e AWS_REGION=us-east-1 \
-  deployer -c 'python scripts/seed_data.py'
+```bash
+make deploy
+```
 
-# Inicia frontend
+Este paso compila el bundle de las lambdas, despliega la pila de DynamoDB y API Gateway, y deja la URL final escrita en `frontend/.env`.
+
+### 3. Crear la tabla
+
+```bash
+make create-table
+```
+
+En despliegues normales la tabla ya queda creada por CDK, pero este comando se conserva para asegurar la estructura local cuando se necesita repetir el proceso.
+
+### 4. Cargar datos de prueba
+
+```bash
+make seed
+```
+
+El seed usa la tabla publicada por CloudFormation, así que evita apuntar a nombres viejos o manuales.
+
+### 5. Probar la API
+
+```bash
+make test-api
+```
+
+## Ver tablas DynamoDB
+
+Para listar las tablas que ve MiniStack, usa este comando:
+
+```bash
+sudo docker compose exec -T cdk-deployer sh -lc '.infra_venv/bin/python3 -m awscli --endpoint-url http://ministack:4566 dynamodb list-tables --output table'
+```
+
+Si quieres solo los nombres:
+
+```bash
+sudo docker compose exec -T cdk-deployer sh -lc '.infra_venv/bin/python3 -m awscli --endpoint-url http://ministack:4566 dynamodb list-tables --query "TableNames" --output text'
+```
+
+## Endpoints útiles
+
+Una vez desplegado, prueba estas rutas:
+
+- `GET /ecommerce/user/1/profile`
+- `GET /ecommerce/user/1/orders`
+- `GET /ecommerce/order/<order_id>/details`
+- `GET /ecommerce/order/<order_id>/items`
+- `GET /ecommerce/user/1/order/<order_id>/details`
+- `GET /ecommerce/user/1/order/<order_id>/items`
+- `GET /ecommerce/dashboard-data`
+- `GET /products`
+
+## Patrón de datos en DynamoDB
+
+La tabla usa claves `PK` y `SK` para modelar usuarios, pedidos y productos.
+
+- Perfil de usuario: `PK = USER#<ID>`, `SK = PROFILE`
+- Pedidos recientes: `PK = USER#<ID>`, `SK = ORDER#<timestamp>`
+- Detalle de pedido: `PK = ORDER#<ID>`, `SK = DETAILS`
+- Ítems de pedido: `PK = ORDER#<ID>`, `SK = ITEM#<ID>`
+
+## Frontend
+
+El frontend corre en Vite y consume la API desplegada por CDK. Cuando `make deploy` termina, `frontend/.env` queda actualizado con la URL local correcta.
+
+Para abrirlo:
+
+```bash
 sudo docker compose up -d frontend
 ```
 
-### 4) Acceder a la aplicación
+Luego entra a `http://localhost:5173`.
 
-* **Frontend:** [http://localhost:5173](http://localhost:5173)
-* **Frontend con datos específicos:** [http://localhost:5173/?user_id=1&order_id=555](http://localhost:5173/?user_id=1&order_id=555)
-* **Ministack/LocalStack:** http://localhost:4566 (API Gateway)
-* **DynamoDB en MiniStack:** http://localhost:4566
+"Si ya hiciste make up entra directamente"
 
-### 5) Verificar que todo funciona
+## Apagar todo
 
 ```bash
-# Listar funciones lambda deployadas
-sudo docker compose run --rm deployer \
-  aws --endpoint-url http://ministack:4566 lambda list-functions
-
-# Probar invocación directa de lambda
-sudo docker compose run --rm deployer \
-  aws --endpoint-url http://ministack:4566 lambda invoke \
-    --function-name ecommerce \
-    --payload '{"httpMethod":"GET","path":"/ecommerce/user/1/profile"}' \
-    /tmp/response.json && cat /tmp/response.json
+make clean
 ```
 
-### Comandos útiles con Make
+## Colaboradores
 
-```bash
-make help         # Muestra todos los comandos disponibles
-make logs-frontend   # Ver logs del frontend
-make logs-ministack  # Ver logs de LocalStack
-make test-api     # Probar conectividad API Gateway
-make clean        # Eliminar contenedores y volúmenes
-make down         # Detener servicios sin eliminarlos
-```
-
-### Estructura de carpetas (Serverless)
-
-```
-infra/
-├── app.py                 # CDK App (orquestador)
-├── api_stack.py          # Stack: Lambda + HTTP API routes
-├── persistence_stack.py  # Stack: DynamoDB
-├── core_stack.py         # Stack: Configuración base
-└── cdk.json             # Configuración CDK para LocalStack
-
-lambdas/
-├── ecommerce/           # Lambda handlers para e-commerce
-│   ├── handler.py       # Router principal (HTTP API entrypoint)
-│   ├── get_user_profile.py
-│   ├── get_recent_orders.py
-│   ├── get_order_details.py
-│   └── ...
-└── products/            # Lambda handlers para productos
-    ├── handler.py
-    └── list_products.py
-
-scripts/
-├── deploy_ministack.sh  # Despliega CDK a LocalStack
-├── create_table.py      # Crea tablas DynamoDB
-├── seed_data.py         # Carga datos iniciales
-└── test_api_gateway.sh  # Valida conectividad API Gateway
-
-frontend/
-├── src/
-│   ├── App.jsx          # Componente principal
-│   ├── api/
-│   │   └── ecommerceApi.js  # Cliente fetch para lambdas
-│   └── components/
-│       └── dashboard/   # Componentes de UI
-└── vite.config.js       # Configuración proxy a ministack:4566
-```
-AWS_ACCESS_KEY_ID=local
-AWS_SECRET_ACCESS_KEY=local
-AWS_DEFAULT_REGION=us-east-1
-AWS_ENDPOINT=http://ministack:4566
-```
-
-Parámetros del frontend:
-
-* `user_id`: ID del usuario
-* `order_id`: ID de la orden/pedido
-
-### Apagar el entorno local
-
-```bash
-sudo docker compose down
-```
-
-### Documentación de la API
-
-La API vive en `lambdas/` y se expone a través de API Gateway local cuando usas `ministack`.
-
-* Endpoint local de pruebas: depende de la ruta montada en `infra/api_stack.py`
-* Para invocar directo, usa `aws lambda invoke` contra `http://ministack:4566`
-
----
-
-## Integraciones
-
-* **DynamoDB:** almacenamiento principal de productos, usuarios y órdenes
-* **Redis:** caching, sesiones y optimización de consultas
-* **boto3:** comunicación con servicios AWS
-
-## Patrones de acceso a DynamoDB
-
-La tabla `ecommerce` usa una clave compuesta `PK` y `SK`. Los accesos principales están modelados así:
-
-1. Obtener perfil de usuario
-
-	* `PK = USER#<ID>`
-	* `SK = PROFILE`
-
-2. Obtener pedidos recientes
-
-	* `PK = USER#<ID>`
-	* `SK = ORDER#<times>`
-
-3. Obtener detalles del pedido
-
-	* `PK = ORDER#<ID>`
-	* `SK = DETAILS`
-
-4. Obtener ítems del pedido
-
-	* `PK = ORDER#<ID>`
-	* `SK = ITEM#<ID>`
-
-## Interfaz
-
-La pantalla principal del frontend agrupa:
-
-* Perfil del usuario
-* Pedidos recientes
-* Detalle del pedido seleccionado
-* Ítems del pedido
+- Farit Teran
+- Andres Luna
+- Daniel Ortiz
 
 El diseño es responsivo y se adapta a escritorio y móvil.
 
