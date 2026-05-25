@@ -23,6 +23,65 @@ const BANNERS = {
   ],
 };
 
+function normalizeText(value = "") {
+  return value
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function levenshteinDistance(source, target) {
+  if (source === target) return 0;
+  if (!source.length) return target.length;
+  if (!target.length) return source.length;
+
+  const rows = Array.from({ length: source.length + 1 }, (_, row) => [row]);
+
+  for (let column = 1; column <= target.length; column += 1) {
+    rows[0][column] = column;
+  }
+
+  for (let row = 1; row <= source.length; row += 1) {
+    for (let column = 1; column <= target.length; column += 1) {
+      const substitutionCost = source[row - 1] === target[column - 1] ? 0 : 1;
+      rows[row][column] = Math.min(
+        rows[row - 1][column] + 1,
+        rows[row][column - 1] + 1,
+        rows[row - 1][column - 1] + substitutionCost
+      );
+    }
+  }
+
+  return rows[source.length][target.length];
+}
+
+function fuzzySearchMatches(haystack, query) {
+  const normalizedHaystack = normalizeText(haystack);
+  const normalizedQuery = normalizeText(query);
+
+  if (!normalizedQuery) return true;
+  if (normalizedHaystack.includes(normalizedQuery)) return true;
+
+  const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  const haystackTokens = normalizedHaystack.split(/\s+/).filter(Boolean);
+
+  return queryTokens.every((queryToken) => {
+    if (normalizedHaystack.includes(queryToken)) return true;
+
+    return haystackTokens.some((candidate) => {
+      if (candidate.startsWith(queryToken) || queryToken.startsWith(candidate)) return true;
+
+      const shortTokenAllowance = queryToken.length <= 4 ? 1 : 2;
+      const lengthGap = Math.abs(candidate.length - queryToken.length);
+      if (lengthGap > shortTokenAllowance) return false;
+
+      return levenshteinDistance(candidate, queryToken) <= shortTokenAllowance;
+    });
+  });
+}
+
 export default function StorePage({ onAddToCart, cartItems = [], initialSearch = "", onSearchChange }) {
   const { products, loading } = useProducts();
   const [search, setSearch] = useState(initialSearch);
@@ -57,7 +116,7 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
   const filtered = useMemo(() => {
     return enrichedProducts.filter((product) => {
       const matchCat = activeCategory === "Todos" || product.category === activeCategory;
-      const matchSearch = [product.name, product.category].join(" ").toLowerCase().includes(search.toLowerCase());
+      const matchSearch = fuzzySearchMatches([product.name, product.category].join(" "), search);
       return matchCat && matchSearch;
     });
   }, [enrichedProducts, search, activeCategory]);
