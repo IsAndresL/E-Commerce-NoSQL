@@ -1,5 +1,6 @@
 """Utilidades comunes para todos los lambda handlers."""
 import json
+from decimal import Decimal
 from typing import Any
 
 HEADERS = {
@@ -15,12 +16,31 @@ def ok(data: Any) -> dict:
     elif hasattr(data, "json") and hasattr(data, "dict"):
         body = data.json()
     elif isinstance(data, list):
-        body = json.dumps(
-            [item.model_dump() if hasattr(item, "model_dump") else item.dict() if hasattr(item, "dict") else item for item in data]
-        )
+        serializable = []
+        for item in data:
+            if hasattr(item, "model_dump"):
+                serializable.append(item.model_dump())
+            elif hasattr(item, "dict"):
+                serializable.append(item.dict())
+            else:
+                serializable.append(item)
+        body = json.dumps(serializable, cls=_DecimalEncoder)
     else:
-        body = json.dumps(data)
+        body = json.dumps(data, cls=_DecimalEncoder)
     return {"statusCode": 200, "headers": HEADERS, "body": body}
+
+
+class _DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            # Prefer int when value is integral, otherwise float
+            try:
+                if o == o.to_integral():
+                    return int(o)
+            except Exception:
+                pass
+            return float(o)
+        return super().default(o)
 
 def created(data: Any) -> dict:
     response = ok(data)

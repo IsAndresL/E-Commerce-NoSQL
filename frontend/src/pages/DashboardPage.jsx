@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { formatDate, statusColor, formatCOP } from "../utils/formatters";
+import { IconReceipt, IconCalendar, IconMapPin, IconMoney, IconBack } from "../components/icons/Icons";
 import { getOrderItems } from "../api/ecommerceApi";
 
 export default function DashboardPage({ onNavigate, userId }) {
@@ -38,7 +39,12 @@ export default function DashboardPage({ onNavigate, userId }) {
 
   return (
     <div className="dashboard-page">
-      <h1 className="page-title">Mi Mercado Global — Panel de Control</h1>
+      <div className="dashboard-header">
+        <button className="back-to-store" onClick={() => onNavigate?.("store")} aria-label="Volver a tienda">
+          <IconBack className="back-icon" /> Volver a tienda
+        </button>
+        <h1 className="page-title">Mi Mercado Global — Panel de Control</h1>
+      </div>
       <p className="breadcrumb">Inicio › Usuario › {profile.name} › Pedidos Recientes</p>
 
       <div className="dashboard-grid">
@@ -57,9 +63,9 @@ export default function DashboardPage({ onNavigate, userId }) {
             </div>
           </div>
           <div className="profile-details">
-            <p><strong>📍 Direcciones:</strong></p>
+            <p><strong>Direcciones:</strong></p>
             <p className="detail-value">{profile.default_address}</p>
-            <p><strong>💳 Metodos de Pago:</strong></p>
+            <p><strong>Métodos de Pago:</strong></p>
             <p className="detail-value">
               {(profile.payment_methods || []).join(", ")}
             </p>
@@ -100,16 +106,16 @@ export default function DashboardPage({ onNavigate, userId }) {
             <h2>Detalle del Pedido {selectedOrder.order_id}</h2>
 
             <div className="order-meta">
+                <div className="meta-block">
+                  <span className="meta-label"><IconReceipt className="meta-icon" /> {selectedOrder.order_id}</span>
+                  <span className={`status-badge ${statusColor(selectedOrder.status)}`}>
+                    Estado: {selectedOrder.status}
+                  </span>
+                </div>
               <div className="meta-block">
-                <span className="meta-label">🧾 {selectedOrder.order_id}</span>
-                <span className={`status-badge ${statusColor(selectedOrder.status)}`}>
-                  Estado: {selectedOrder.status}
-                </span>
-              </div>
-              <div className="meta-block">
-                <span>📅 {formatDate(selectedOrder.created_at)}</span>
-                <span>📍 Dir: {selectedOrder.shipping_address}</span>
-                {selectedOrder.total && <span>💰 Total: {formatCOP(selectedOrder.total)}</span>}
+                  <span><IconCalendar className="meta-small-icon" /> {formatDate(selectedOrder.created_at)}</span>
+                  <span><IconMapPin className="meta-small-icon" /> Dir: {selectedOrder.shipping_address}</span>
+                  {selectedOrder.total && <span><IconMoney className="meta-small-icon" /> Total: {formatCOP(selectedOrder.total)}</span>}
               </div>
             </div>
 
@@ -150,7 +156,7 @@ export default function DashboardPage({ onNavigate, userId }) {
 
         {!selectedOrder && (
           <section className="order-detail-card empty-detail">
-            <p>👈 Selecciona un pedido para ver su detalle</p>
+            <p>Selecciona un pedido para ver su detalle</p>
           </section>
         )}
       </div>

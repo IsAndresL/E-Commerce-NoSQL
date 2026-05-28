@@ -1,5 +1,6 @@
 import { formatCOP } from "../utils/formatters";
 import { getMerchandising } from "../utils/merchandising";
+import { IconStar } from "./icons/Icons";
 
 export default function ProductCard({ product, onAddToCart, onViewDetails, onBuyNow }) {
   const outOfStock = product.stock === 0;
@@ -26,7 +27,7 @@ export default function ProductCard({ product, onAddToCart, onViewDetails, onBuy
         <p className="product-price">{formatCOP(product.price)}</p>
         <p className="product-stock">Stock: {product.stock}</p>
         <div className="product-meta-line">
-          <span>⭐ {merch.rating}</span>
+          <span><IconStar className="rating-star" /> {merch.rating}</span>
           <span>{merch.reviews} reseñas</span>
         </div>
         <div className="product-attributes">

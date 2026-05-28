@@ -1,4 +1,5 @@
 import { formatCOP } from "../utils/formatters";
+import { IconCart, IconBrand, IconClose, IconTrash } from "./icons/Icons";
 
 export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, onClose, onCheckout, checkoutLoading = false }) {
   const shipping = total >= 180000 ? 0 : items.length > 0 ? 14900 : 0;
@@ -8,13 +9,13 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
     <div className="cart-overlay" onClick={onClose}>
       <aside className="cart-drawer" onClick={(e) => e.stopPropagation()}>
         <div className="cart-header">
-          <h2>🛒 Tu Carrito</h2>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <h2><IconCart className="cart-header-icon" /> Tu Carrito</h2>
+          <button className="close-btn" onClick={onClose}><IconClose className="close-icon" /></button>
         </div>
 
         {items.length === 0 ? (
           <div className="cart-empty">
-            <p>🛍 Tu carrito está vacío</p>
+            <p><IconBrand className="empty-brand-icon" /> Tu carrito está vacío</p>
             <div className="empty-trust">
               <span>Pago seguro</span>
               <span>Checkout como invitado</span>
@@ -45,7 +46,7 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
                   </div>
                   <div className="cart-item-right">
                     <p className="cart-item-subtotal">{formatCOP(item.price * item.quantity)}</p>
-                    <button className="remove-btn" onClick={() => onRemove(item.product_id)}>🗑</button>
+                    <button className="remove-btn" onClick={() => onRemove(item.product_id)}><IconTrash className="trash-icon" /></button>
                   </div>
                 </div>
               ))}

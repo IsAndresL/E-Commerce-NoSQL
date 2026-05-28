@@ -1,4 +1,13 @@
 import { useState } from "react";
+import {
+  IconBrand,
+  IconSearch,
+  IconCart,
+  IconMapPin,
+  IconProfile,
+  IconLogout,
+} from "./icons/Icons";
+import { IconClose } from "./icons/Icons";
 
 export default function Navbar({ cartCount, user, activePage, onNavigate, onLogout, onSearch, searchValue = "" }) {
   const [showProfile, setShowProfile] = useState(false);
@@ -13,13 +22,13 @@ export default function Navbar({ cartCount, user, activePage, onNavigate, onLogo
 
   return (
     <nav className="navbar">
-      <div className="navbar-brand" onClick={() => onNavigate("store")}>
-        <span className="brand-icon">🛍</span>
+      <div className="navbar-brand" onClick={() => onNavigate("store")}> 
+        <IconBrand className="brand-icon" />
         <span className="brand-name">EcoCart</span>
       </div>
 
       <div className="navbar-search-box">
-        <span className="search-icon">🔎</span>
+        <IconSearch className="search-icon" />
         <input
           type="text"
           placeholder="Busca productos..."
@@ -35,14 +44,14 @@ export default function Navbar({ cartCount, user, activePage, onNavigate, onLogo
               onSearch?.("");
             }}
           >
-            ✕
+            <IconClose className="search-reset-icon" />
           </button>
         )}
       </div>
 
       <div className="navbar-actions">
-        <button className="cart-btn" onClick={() => onNavigate("cart")}>
-          🛒 Carrito
+        <button className="cart-btn" onClick={() => onNavigate("cart")}> 
+          <IconCart className="cart-icon" /> Carrito
           {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
         </button>
 
@@ -63,20 +72,15 @@ export default function Navbar({ cartCount, user, activePage, onNavigate, onLogo
             <div className="profile-dropdown">
               <p className="dropdown-greeting">Bienvenido, <strong>{user?.name}</strong></p>
               <p className="dropdown-address">
-                📍 <span>{user?.default_address}</span>
+                <IconMapPin className="dropdown-address-icon" /> <span>{user?.default_address}</span>
               </p>
               <hr />
-              <button
-                className="dropdown-link"
-                onClick={() => { setShowProfile(false); onNavigate("dashboard"); }}
-              >
-                📦 Mis Pedidos
-              </button>
+              {/* Removed 'Mis Pedidos' to keep only Perfil as requested */}
               <button
                 className="dropdown-link"
                 onClick={() => { setShowProfile(false); onNavigate("profile"); }}
               >
-                👤 Mi Perfil
+                <IconProfile className="dropdown-link-icon" /> Mi Perfil
               </button>
               <hr />
               <button
@@ -86,7 +90,7 @@ export default function Navbar({ cartCount, user, activePage, onNavigate, onLogo
                   onLogout?.();
                 }}
               >
-                ↩ Cerrar sesión
+                <IconLogout className="dropdown-link-icon" /> Cerrar sesión
               </button>
             </div>
           )}

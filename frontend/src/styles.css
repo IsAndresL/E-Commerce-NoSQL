@@ -73,7 +73,7 @@ body {
   cursor: pointer;
   text-decoration: none;
 }
-.brand-icon { font-size: 1.5rem; }
+.brand-icon { width: 20px; height: 20px; display: inline-block; }
 
 .navbar-search-box {
   display: flex; align-items: center; gap: 12px;
@@ -207,6 +207,56 @@ body {
 .dropdown-link.logout { color: var(--error); margin-top: 4px; }
 .dropdown-user-btn { font-weight: 500; }
 hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+/* Dropdown/profile specific icons (smaller) */
+.dropdown-address-icon,
+.dropdown-link-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+  color: var(--text-muted);
+}
+
+/* Back to store button icon sizing */
+.back-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* Back-to-store button visual polish */
+.back-to-store {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--primary-dark);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.back-to-store:hover {
+  background: var(--primary-light);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+.back-to-store:active { transform: translateY(0); }
+
+/* Small variant for compact header */
+.back-to-store.compact {
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
 
 /* ─── Store Page ─── */
 .store-page { max-width: 1280px; margin: 0 auto; padding: 0 24px 48px; }
@@ -346,7 +396,23 @@ hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
   transition: box-shadow var(--transition);
 }
 .search-box:focus-within { box-shadow: var(--shadow-md); border-color: var(--primary); }
-.search-icon { color: var(--text-muted); font-size: 1rem; }
+.search-icon { color: var(--text-muted); width: 18px; height: 18px; display: inline-block; }
+
+/* Icon sizing utility classes */
+svg.icon, .icon {
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.12em;
+  display: inline-block;
+}
+
+.cart-icon { width: 18px; height: 18px; }
+.cart-header-icon { width: 18px; height: 18px; margin-right: 8px; vertical-align: middle; }
+.meta-icon { width: 18px; height: 18px; margin-right: 8px; vertical-align: middle; }
+.meta-small-icon { width: 14px; height: 14px; margin-right: 6px; vertical-align: middle; }
+.rating-star { width: 14px; height: 14px; margin-right: 6px; vertical-align: middle; }
+.close-icon, .modal-close-icon, .search-reset-icon, .trash-icon { width: 16px; height: 16px; }
+.empty-brand-icon { width: 20px; height: 20px; margin-right: 8px; vertical-align: middle; }
 .search-input {
   border: none; outline: none; flex: 1;
   font-family: var(--font-body); font-size: 0.95rem;
