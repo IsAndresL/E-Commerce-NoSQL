@@ -73,6 +73,11 @@ class LambdaStack(Stack):
             ("/ecommerce/user/{user_id}/profile", apigwv2.HttpMethod.GET, "get_user_profile"),
             ("/ecommerce/user/{user_id}/orders", apigwv2.HttpMethod.GET, "get_recent_orders"),
             ("/ecommerce/user/{user_id}/orders", apigwv2.HttpMethod.POST, "create_order"),
+            ("/ecommerce/user/{user_id}/cart", apigwv2.HttpMethod.GET, "get_cart"),
+            ("/ecommerce/user/{user_id}/cart", apigwv2.HttpMethod.DELETE, "clear_cart"),
+            ("/ecommerce/user/{user_id}/cart/items", apigwv2.HttpMethod.POST, "add_cart_item"),
+            ("/ecommerce/user/{user_id}/cart/items/{product_id}", apigwv2.HttpMethod.PATCH, "update_cart_item"),
+            ("/ecommerce/user/{user_id}/cart/items/{product_id}", apigwv2.HttpMethod.DELETE, "remove_cart_item"),
             ("/ecommerce/order/{order_id}/details", apigwv2.HttpMethod.GET, "get_order_details"),
             ("/ecommerce/order/{order_id}/items", apigwv2.HttpMethod.GET, "get_order_items"),
             ("/ecommerce/user/{user_id}/order/{order_id}/details", apigwv2.HttpMethod.GET, "get_user_order_details"),
@@ -113,8 +118,14 @@ class LambdaStack(Stack):
             "EcommerceHttpApi",
             api_name="EcommerceHttpApi",
             cors_preflight=apigwv2.CorsPreflightOptions(
-                allow_origins=["http://localhost:5173"],
-                allow_methods=[apigwv2.CorsHttpMethod.GET, apigwv2.CorsHttpMethod.POST, apigwv2.CorsHttpMethod.OPTIONS],
+                allow_origins=["http://localhost:5173", "http://localhost:5174"],
+                allow_methods=[
+                    apigwv2.CorsHttpMethod.GET,
+                    apigwv2.CorsHttpMethod.POST,
+                    apigwv2.CorsHttpMethod.PATCH,
+                    apigwv2.CorsHttpMethod.DELETE,
+                    apigwv2.CorsHttpMethod.OPTIONS,
+                ],
                 allow_headers=["*"],
             ),
         )
