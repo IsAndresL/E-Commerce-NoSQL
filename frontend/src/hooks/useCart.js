@@ -74,7 +74,7 @@ export function useCart(userId) {
     setMutating(true);
     setError("");
     try {
-      return applyCart(await addCartItem(userId, product.product_id, quantity));
+      return applyCart(await addCartItem(userId, product.product_id, Math.max(1, Number(quantity) || 1)));
     } catch (err) {
       setError(err?.message || "No se pudo agregar el producto.");
       throw err;
@@ -101,10 +101,14 @@ export function useCart(userId) {
   const updateQuantity = useCallback(async (productId, quantity) => {
     if (!userId || !productId) return null;
 
+    const nextQuantity = Math.max(0, Number(quantity) || 0);
     setMutating(true);
     setError("");
     try {
-      return applyCart(await updateCartItem(userId, productId, quantity));
+      const cart = nextQuantity <= 0
+        ? await removeCartItem(userId, productId)
+        : await updateCartItem(userId, productId, nextQuantity);
+      return applyCart(cart);
     } catch (err) {
       setError(err?.message || "No se pudo actualizar la cantidad.");
       throw err;

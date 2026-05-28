@@ -11,6 +11,10 @@ function buildUrl(path) {
   return `${BASE_URL}/${cleanPath}`;
 }
 
+function encodePathPart(value) {
+  return encodeURIComponent(String(value));
+}
+
 async function apiFetch(path, options = {}) {
   const { body, headers, ...fetchOptions } = options;
   const hasBody = body !== undefined;
@@ -35,26 +39,27 @@ async function apiFetch(path, options = {}) {
     }
     throw new Error(`Error ${res.status}: ${detail}`);
   }
+  if (res.status === 204) return null;
   return res.json();
 }
 
 export const getUserProfile = (userId) =>
-  apiFetch(`/ecommerce/user/${userId}/profile`);
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/profile`);
 
 export const getRecentOrders = (userId) =>
-  apiFetch(`/ecommerce/user/${userId}/orders`);
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/orders`);
 
 export const getOrderDetails = (orderId) =>
-  apiFetch(`/ecommerce/order/${orderId}/details`);
+  apiFetch(`/ecommerce/order/${encodePathPart(orderId)}/details`);
 
 export const getOrderItems = (orderId) =>
-  apiFetch(`/ecommerce/order/${orderId}/items`);
+  apiFetch(`/ecommerce/order/${encodePathPart(orderId)}/items`);
 
 export const getUserOrderDetails = (userId, orderId) =>
-  apiFetch(`/ecommerce/user/${userId}/order/${orderId}/details`);
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/order/${encodePathPart(orderId)}/details`);
 
 export const getUserOrderItems = (userId, orderId) =>
-  apiFetch(`/ecommerce/user/${userId}/order/${orderId}/items`);
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/order/${encodePathPart(orderId)}/items`);
 
 export const getDashboardData = () =>
   apiFetch(`/ecommerce/dashboard-data`);
@@ -80,32 +85,33 @@ export const getUsers = () =>
   apiFetch(`/ecommerce/users`);
 
 export const getCart = (userId) =>
-  apiFetch(`/ecommerce/user/${userId}/cart`);
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/cart`);
 
 export const addCartItem = (userId, productId, quantity = 1) =>
-  apiFetch(`/ecommerce/user/${userId}/cart/items`, {
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/cart/items`, {
     method: "POST",
     body: { product_id: productId, quantity },
   });
 
 export const updateCartItem = (userId, productId, quantity) =>
-  apiFetch(`/ecommerce/user/${userId}/cart/items/${productId}`, {
-    method: "PATCH",
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/cart/items/${encodePathPart(productId)}`, {
+    method: "POST",
     body: { quantity },
   });
 
 export const removeCartItem = (userId, productId) =>
-  apiFetch(`/ecommerce/user/${userId}/cart/items/${productId}`, {
-    method: "DELETE",
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/cart/items/${encodePathPart(productId)}`, {
+    method: "POST",
+    body: { quantity: 0 },
   });
 
 export const clearCartItems = (userId) =>
-  apiFetch(`/ecommerce/user/${userId}/cart`, {
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/cart`, {
     method: "DELETE",
   });
 
 export const createOrder = (userId, payload) =>
-  apiFetch(`/ecommerce/user/${userId}/orders`, {
+  apiFetch(`/ecommerce/user/${encodePathPart(userId)}/orders`, {
     method: "POST",
     body: payload,
   });

@@ -36,8 +36,7 @@ class CartService:
 
     def add_item(self, user_id: str, product_id: str, quantity: int = 1) -> CartResponse:
         quantity = self._coerce_quantity(quantity)
-        current_items = self.repo.list_items(user_id)
-        current = next((item for item in current_items if item.get("product_id") == product_id), None)
+        current = self.repo.get_item(user_id, product_id)
         new_quantity = quantity + self._coerce_quantity(current.get("quantity", 0), minimum=0) if current else quantity
         self._save_item(user_id, product_id, new_quantity)
         return self._refresh_cart(user_id)
@@ -59,6 +58,9 @@ class CartService:
         cart = CartResponse(user_id=user_id, updated_at=self._now())
         self._cache_cart(cart)
         return cart
+
+    def invalidate_cache(self, user_id: str) -> None:
+        self.cache.delete(self._cache_key(user_id))
 
     def get_checkout_items(self, user_id: str) -> list[CartItem]:
         return self.get_cart(user_id).items

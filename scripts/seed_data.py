@@ -129,7 +129,7 @@ def wait_for_catalog_index(table):
         table.reload()
         indexes = table.global_secondary_indexes or []
         index = next((item for item in indexes if item.get("IndexName") == "GSI1"), None)
-        if index and index.get("IndexStatus") == "ACTIVE":
+        if index and index.get("IndexStatus") in (None, "ACTIVE"):
             return
         time.sleep(2)
 
@@ -635,8 +635,7 @@ def build_items() -> list[dict]:
             "price": Decimal("76000"),
             "stock": 40,
             "category": "Deportes",
-            "image_url": "https://images.unsplash.com/photo-1518604666860-9ed391f76d08?w=300&h=300&fit=crop",
-        },
+            "image_url": "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=300&auto=format&fit=crop"        },
     ]
 
     items += [
@@ -927,7 +926,7 @@ def build_items() -> list[dict]:
             "price": Decimal("145000"),
             "stock": 27,
             "category": "Salud",
-            "image_url": "https://images.unsplash.com/photo-1559591937-abc4c2e2d5c5?w=300&h=300&fit=crop",
+            "image_url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=300&h=300&q=80"
         },
         {
             "PK": "PRODUCT#p39",

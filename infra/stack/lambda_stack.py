@@ -76,6 +76,7 @@ class LambdaStack(Stack):
             ("/ecommerce/user/{user_id}/cart", apigwv2.HttpMethod.GET, "get_cart"),
             ("/ecommerce/user/{user_id}/cart", apigwv2.HttpMethod.DELETE, "clear_cart"),
             ("/ecommerce/user/{user_id}/cart/items", apigwv2.HttpMethod.POST, "add_cart_item"),
+            ("/ecommerce/user/{user_id}/cart/items/{product_id}", apigwv2.HttpMethod.POST, "update_cart_item"),
             ("/ecommerce/user/{user_id}/cart/items/{product_id}", apigwv2.HttpMethod.PATCH, "update_cart_item"),
             ("/ecommerce/user/{user_id}/cart/items/{product_id}", apigwv2.HttpMethod.DELETE, "remove_cart_item"),
             ("/ecommerce/order/{order_id}/details", apigwv2.HttpMethod.GET, "get_order_details"),
@@ -88,9 +89,16 @@ class LambdaStack(Stack):
         lambda_functions = []
 
         for path, method, module in route_definitions:
+            route_id = (
+                f"{module}_{method.value}_{path}"
+                .replace("/", "_")
+                .replace("{", "")
+                .replace("}", "")
+                .replace("-", "_")
+            )
             fn = _lambda.Function(
                 self,
-                f"Ecommerce_{module}",
+                f"Ecommerce_{route_id}",
                 runtime=_lambda.Runtime.PYTHON_3_11,
                 handler=f"lambdas.ecommerce.{module}.lambda_handler",
                 code=lambda_code,
@@ -130,7 +138,7 @@ class LambdaStack(Stack):
             "EcommerceHttpApi",
             api_name="EcommerceHttpApi",
             cors_preflight=apigwv2.CorsPreflightOptions(
-                allow_origins=["http://localhost:5173", "http://localhost:5174"],
+                allow_origins=["*"],
                 allow_methods=[
                     apigwv2.CorsHttpMethod.GET,
                     apigwv2.CorsHttpMethod.POST,

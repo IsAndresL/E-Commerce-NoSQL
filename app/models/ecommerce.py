@@ -41,7 +41,7 @@ class OrderItem(BaseModel):
 
 class CheckoutItem(BaseModel):
     product_id: str
-    name: str
+    name: str = "Producto"
     quantity: str | int = "1"
     unit_price: str | int | float = "0"
     price: str | int | float | None = None

@@ -6,7 +6,7 @@ from typing import Any, Mapping
 
 from app.core.config import get_settings
 from app.db.redis import get_redis_cache
-from app.models.ecommerce import CheckoutRequest, CheckoutResponse, OrderDetails, OrderItem, OrderSummary, UserProfile
+from app.models.ecommerce import CheckoutItem, CheckoutRequest, CheckoutResponse, OrderDetails, OrderItem, OrderSummary, UserProfile
 from app.repositories.ecommerce_table import ECommerceTable
 from app.repositories.product_repo import ProductRepository
 from app.services.cart_service import CartService
@@ -103,9 +103,15 @@ class ECommerceService:
         if not profile:
             raise ValueError("User not found")
 
-        cart_service = CartService()
-        cart = cart_service.get_cart(user_id)
-        checkout_items = cart.items
+        is_direct_checkout = bool(checkout_request.items)
+        if is_direct_checkout:
+            checkout_items = self._build_direct_checkout_items(checkout_request.items)
+            shipping_cost = self._shipping_for_items(checkout_items, checkout_request.shipping_cost)
+        else:
+            cart_service = CartService()
+            cart = cart_service.get_cart(user_id)
+            checkout_items = cart.items
+            shipping_cost = self._coerce_decimal(cart.shipping_estimate)
 
         if not checkout_items:
             raise ValueError("Cart is empty")
@@ -158,7 +164,6 @@ class ECommerceService:
                 }
             )
 
-        shipping_cost = self._coerce_decimal(cart.shipping_estimate)
         total += shipping_cost
 
         for product_id, quantity in stock_reservations.items():
@@ -208,9 +213,55 @@ class ECommerceService:
 
         self.table.save_order_records(records)
         self._invalidate_order_caches(user_id, order_id)
-        cart_service.clear_cart(user_id)
+        if not is_direct_checkout:
+            cart_service.clear_cart(user_id)
+        else:
+            CartService().invalidate_cache(user_id)
 
         return CheckoutResponse(user_id=user_id, order_summary=summary, order_details=details, items=order_items)
+
+    def _build_direct_checkout_items(self, requested_items: list[CheckoutItem]) -> list[CheckoutItem]:
+        checkout_items: list[CheckoutItem] = []
+        for requested in requested_items:
+            product_id = str(requested.product_id).strip()
+            quantity = self._coerce_int(requested.quantity, default=1)
+            if quantity <= 0:
+                continue
+
+            product = self.product_repo.get_product(product_id)
+            if not product:
+                raise ValueError(f"Producto {product_id} no existe")
+
+            stock = self._coerce_int(product.get("stock"), default=0)
+            if quantity > stock:
+                raise ValueError(f"Stock insuficiente para {product_id}")
+
+            unit_price = self._coerce_decimal(product.get("price"))
+            subtotal = unit_price * Decimal(quantity)
+            checkout_items.append(
+                CheckoutItem(
+                    product_id=product_id,
+                    name=str(product.get("name") or "Producto"),
+                    quantity=quantity,
+                    unit_price=unit_price,
+                    subtotal=subtotal,
+                    image_url=str(product.get("image_url") or ""),
+                    category=str(product.get("category") or ""),
+                )
+            )
+        return checkout_items
+
+    def _shipping_for_items(self, checkout_items: list[Any], requested_shipping: Any) -> Decimal:
+        explicit_shipping = self._coerce_decimal(requested_shipping)
+        if explicit_shipping > 0:
+            return explicit_shipping
+
+        subtotal = sum(
+            (self._coerce_decimal(item.unit_price) * Decimal(self._coerce_int(item.quantity, default=1))
+             for item in checkout_items),
+            Decimal("0"),
+        )
+        return Decimal("0") if subtotal >= Decimal("180000") or not checkout_items else Decimal("14900")
 
     def _normalize_profile(self, profile: Mapping[str, Any]) -> UserProfile:
         payment_methods = self._pick_list(profile, "payment_methods", "payments", "Metodos de pago", default=["Sin metodos"])

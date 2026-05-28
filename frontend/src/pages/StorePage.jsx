@@ -28,7 +28,7 @@ const BANNERS = {
   
 };
 
-export default function StorePage({ onAddToCart, cartItems = [], initialSearch = "", onSearchChange }) {
+export default function StorePage({ onAddToCart, onBuyNow, cartItems = [], initialSearch = "", onSearchChange }) {
   const [search, setSearch] = useState(initialSearch);
   const [backendSearch, setBackendSearch] = useState(initialSearch);
   const [activeCategory, setActiveCategory] = useState("Todos");
@@ -175,10 +175,7 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
                   product={product}
                   onAddToCart={onAddToCart}
                   onViewDetails={() => setSelectedProduct(product)}
-                  onBuyNow={() => {
-                    onAddToCart(product);
-                    setSelectedProduct(product);
-                  }}
+                  onBuyNow={() => setSelectedProduct(product)}
                 />
               ))}
             </div>
@@ -236,7 +233,7 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
                 <button className="btn-primary-strong" onClick={() => { onAddToCart(selectedProduct); setSelectedProduct(null); }}>
                   Añadir al carrito
                 </button>
-                <button className="btn-secondary" onClick={() => { onAddToCart(selectedProduct); setSelectedProduct(null); }}>
+                <button className="btn-secondary" onClick={() => { onBuyNow?.(selectedProduct); setSelectedProduct(null); }}>
                   Comprar ahora
                 </button>
               </div>

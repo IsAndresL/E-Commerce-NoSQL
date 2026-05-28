@@ -62,6 +62,24 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
     }
   };
 
+  const handleBuyNow = async (product) => {
+    if (!product?.product_id || checkoutLoading) return;
+
+    setCheckoutLoading(true);
+    try {
+      await createOrder(userId, {
+        shipping_address: profile?.default_address || profile?.addresses?.[0] || "",
+        items: [{ product_id: product.product_id, quantity: 1 }],
+      });
+      setCartOpen(false);
+      setPage("dashboard");
+    } catch (error) {
+      alert(error?.message || "No se pudo registrar la compra inmediata.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const handleNavigate = (dest) => {
     if (dest === "cart") {
       setCartOpen(true);
@@ -104,6 +122,7 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
         {page === "store" && (
           <StorePage 
             onAddToCart={handleAddToCart} 
+            onBuyNow={handleBuyNow}
             cartItems={items}
             initialSearch={navbarSearch}
             onSearchChange={setNavbarSearch}
