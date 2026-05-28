@@ -53,7 +53,6 @@ Este es el flujo recomendado para levantar todo el entorno:
 ```bash
 make up
 make deploy
-make create-table
 make seed
 ```
 
@@ -74,7 +73,6 @@ make logs-frontend
 
 - `make up`: levanta `ministack`, `cdk-deployer`, `redis` y `frontend`.
 - `make deploy`: ejecuta `cdk deploy` y escribe `frontend/.env` con la URL real de la API.
-- `make create-table`: crea la tabla DynamoDB del proyecto.
 - `make seed`: carga datos de prueba en la tabla correcta.
 - `make test-api`: verifica que API Gateway y las lambdas respondan.
 - `make clean`: detiene el entorno y elimina volúmenes y `cdk.out`.
@@ -97,15 +95,7 @@ make deploy
 
 Este paso compila el bundle de las lambdas, despliega la pila de DynamoDB y API Gateway, y deja la URL final escrita en `frontend/.env`.
 
-### 3. Crear la tabla
-
-```bash
-make create-table
-```
-
-En despliegues normales la tabla ya queda creada por CDK, pero este comando se conserva para asegurar la estructura local cuando se necesita repetir el proceso.
-
-### 4. Cargar datos de prueba
+### 3. Cargar datos de prueba
 
 ```bash
 make seed
@@ -113,7 +103,7 @@ make seed
 
 El seed usa la tabla publicada por CloudFormation, así que evita apuntar a nombres viejos o manuales.
 
-### 5. Probar la API
+### 4. Probar la API
 
 ```bash
 make test-api
