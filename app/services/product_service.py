@@ -28,26 +28,12 @@ class ProductService:
         normalized_category = self._clean_category(category)
         normalized_search = self._normalize_text(search or "")
         safe_limit = min(max(self._coerce_int(limit, 24), 1), 48)
-        cache_key = self._cache_key(
-            "products",
-            "page",
-            normalized_category or "all",
-            normalized_search or "none",
-            str(safe_limit),
-            cursor or "start",
-        )
-        cached_products = self.cache.get_json(cache_key)
-        if isinstance(cached_products, dict):
-            return cached_products
-
-        page = self._query_products_page(
+        return self._query_products_page(
             category=normalized_category,
             search=normalized_search,
             limit=safe_limit,
             cursor=self._decode_cursor(cursor),
         )
-        self.cache.set_json(cache_key, page, ttl_seconds=self.cache_ttl_seconds)
-        return page
 
     def list_categories(self) -> list[dict]:
         cache_key = self._cache_key("products", "categories")
@@ -102,6 +88,9 @@ class ProductService:
 
             for item in page_items:
                 product = self._normalize_product(item)
+                authoritative_product = self.repo.get_product(product["product_id"]) if product["product_id"] else None
+                if authoritative_product:
+                    product["stock"] = self._pick_int(authoritative_product, "stock", default=product["stock"])
                 haystack = " ".join([product["name"], product["category"], product["description"]])
                 if search and search not in self._normalize_text(haystack):
                     continue
