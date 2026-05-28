@@ -4,12 +4,39 @@ from botocore.exceptions import ClientError
 
 
 class ProductRepository:
+    CATALOG_INDEX = "GSI1"
+
     def __init__(self, adapter: DynamoDBAdapter | None = None):
         self.adapter = adapter or DynamoDBAdapter()
 
     def list_products(self) -> list[dict]:
-        return self.adapter.scan_items(
-            Attr("PK").begins_with("PRODUCT#") & Attr("SK").eq("#METADATA")
+        return self.adapter.query_items(
+            "GSI1PK",
+            "CATALOG#ALL",
+            index_name=self.CATALOG_INDEX,
+        )
+
+    def list_products_page(
+        self,
+        category: str | None = None,
+        limit: int = 24,
+        cursor: dict | None = None,
+    ) -> dict:
+        bucket = f"CATEGORY#{category}" if category else "CATALOG#ALL"
+        return self.adapter.query_page(
+            "GSI1PK",
+            bucket,
+            index_name=self.CATALOG_INDEX,
+            limit=limit,
+            exclusive_start_key=cursor,
+        )
+
+    def list_categories(self) -> list[dict]:
+        return self.adapter.query_items(
+            "PK",
+            "CATEGORIES",
+            "SK",
+            "CATEGORY#",
         )
 
     def get_product(self, product_id: str) -> dict | None:

@@ -30,6 +30,9 @@ class DynamoDBAdapter:
         partition_key_value: str,
         sort_key_name: str | None = None,
         begins_with: str | None = None,
+        index_name: str | None = None,
+        limit: int | None = None,
+        exclusive_start_key: dict | None = None,
     ):
         """
         Query items from the DynamoDB table using DynamoDB key expressions.
@@ -40,13 +43,52 @@ class DynamoDBAdapter:
             if sort_key_name and begins_with is not None:
                 key_condition = key_condition & Key(sort_key_name).begins_with(begins_with)
 
-            response = self.table.query(
-                KeyConditionExpression=key_condition,
-            )
+            kwargs = {"KeyConditionExpression": key_condition}
+            if index_name:
+                kwargs["IndexName"] = index_name
+            if limit:
+                kwargs["Limit"] = limit
+            if exclusive_start_key:
+                kwargs["ExclusiveStartKey"] = exclusive_start_key
+
+            response = self.table.query(**kwargs)
             return response.get("Items", [])
         except (ClientError, BotoCoreError) as e:
             print(f"Error querying items: {e}")
             return []
+
+    def query_page(
+        self,
+        partition_key_name: str,
+        partition_key_value: str,
+        sort_key_name: str | None = None,
+        begins_with: str | None = None,
+        index_name: str | None = None,
+        limit: int | None = None,
+        exclusive_start_key: dict | None = None,
+    ):
+        try:
+            key_condition = Key(partition_key_name).eq(partition_key_value)
+
+            if sort_key_name and begins_with is not None:
+                key_condition = key_condition & Key(sort_key_name).begins_with(begins_with)
+
+            kwargs = {"KeyConditionExpression": key_condition}
+            if index_name:
+                kwargs["IndexName"] = index_name
+            if limit:
+                kwargs["Limit"] = limit
+            if exclusive_start_key:
+                kwargs["ExclusiveStartKey"] = exclusive_start_key
+
+            response = self.table.query(**kwargs)
+            return {
+                "items": response.get("Items", []),
+                "last_evaluated_key": response.get("LastEvaluatedKey"),
+            }
+        except (ClientError, BotoCoreError) as e:
+            print(f"Error querying page: {e}")
+            return {"items": [], "last_evaluated_key": None}
 
     def scan_items(self, filter_expression=None):
         """
