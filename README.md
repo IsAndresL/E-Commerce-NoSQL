@@ -136,15 +136,72 @@ Una vez desplegado, prueba estas rutas:
 - `GET /ecommerce/user/1/order/<order_id>/items`
 - `GET /ecommerce/dashboard-data`
 - `GET /products`
+- `GET /products/categories`
 
 ## Patrón de datos en DynamoDB
 
-La tabla usa claves `PK` y `SK` para modelar usuarios, pedidos y productos.
+La tabla usa un diseño **single-table**: varias entidades viven en una sola tabla y se distinguen por el valor de `PK` y `SK`.
+
+### Cómo leer `PK` y `SK`
+
+- `PK` agrupa los ítems que quieres consultar juntos.
+- `SK` ordena esos ítems dentro de la misma partición y permite buscar por prefijo.
+- `GetItem` se usa cuando conoces la pareja exacta `PK + SK`.
+- `Query` se usa cuando conoces solo `PK` y quieres traer varios ítems con un prefijo en `SK`.
+
+### Entidades principales
 
 - Perfil de usuario: `PK = USER#<ID>`, `SK = PROFILE`
-- Pedidos recientes: `PK = USER#<ID>`, `SK = ORDER#<timestamp>`
+- Pedidos de usuario: `PK = USER#<ID>`, `SK = ORDER#<timestamp>`
 - Detalle de pedido: `PK = ORDER#<ID>`, `SK = DETAILS`
-- Ítems de pedido: `PK = ORDER#<ID>`, `SK = ITEM#<ID>`
+- Ítems de pedido: `PK = ORDER#<ID>`, `SK = ITEM#<n>`
+- Producto base: `PK = PRODUCT#<id>`, `SK = #METADATA`
+
+### Modelo de la tabla
+
+| Entidad | PK | SK | GSI1PK | GSI1SK | Uso |
+| --- | --- | --- | --- | --- | --- |
+| Perfil de usuario | `USER#<ID>` | `PROFILE` | - | - | Leer el perfil exacto de un usuario |
+| Pedido de usuario | `USER#<ID>` | `ORDER#<timestamp>` | - | - | Listar pedidos de un usuario |
+| Detalle de pedido | `ORDER#<ID>` | `DETAILS` | - | - | Leer el resumen del pedido |
+| Ítem de pedido | `ORDER#<ID>` | `ITEM#<n>` | - | - | Leer las líneas del pedido |
+| Producto base | `PRODUCT#<id>` | `#METADATA` | `PRODUCT#LOOKUP` | `PRODUCT#<id>` | Acceso al producto completo |
+| Catálogo total | `CATALOG#ALL` | `PRODUCT#<id>` | `CATALOG#ALL` | `PRODUCT#<categoría>#<nombre>#<id>` | Listado general de productos |
+| Catálogo por categoría | `CATEGORY#<categoría>` | `PRODUCT#<id>` | `CATEGORY#<categoría>` | `PRODUCT#<nombre>#<id>` | Listado filtrado por categoría |
+| Categorías | `CATEGORIES` | `CATEGORY#<nombre>` | - | - | Listar categorías disponibles |
+
+```mermaid
+flowchart TB
+	T[(Tabla Ecommerce)]
+
+	T --> U1[USER#1 / PROFILE]
+	T --> U2[USER#1 / ORDER#202311151430]
+	T --> O1[ORDER#553 / DETAILS]
+	T --> O2[ORDER#553 / ITEM#1]
+	T --> P1[PRODUCT#p1 / #METADATA]
+	T --> C1[CATALOG#ALL / PRODUCT#p1]
+	T --> C2[CATEGORY#Electrónica / PRODUCT#p1]
+	T --> G1[CATEGORIES / CATEGORY#Electrónica]
+```
+
+### Cómo se consultan los datos
+
+- `GET /ecommerce/user/{user_id}/profile` hace una búsqueda exacta con `PK = USER#<id>` y `SK = PROFILE`.
+- `GET /ecommerce/user/{user_id}/orders` consulta `PK = USER#<id>` y filtra por `SK` con prefijo `ORDER#` para traer el historial del usuario.
+- `GET /ecommerce/order/{order_id}/details` usa `PK = ORDER#<id>` y `SK = DETAILS`.
+- `GET /ecommerce/order/{order_id}/items` usa `PK = ORDER#<id>` y `SK` con prefijo `ITEM#`.
+- `GET /products` consulta el índice `GSI1` con `GSI1PK = CATALOG#ALL` para traer el catálogo completo.
+- `GET /products?category=Electrónica` consulta el mismo índice con `GSI1PK = CATEGORY#Electrónica` para traer solo esa categoría.
+- `GET /products/categories` lee los registros `PK = CATEGORIES` y `SK = CATEGORY#<nombre>`.
+
+### Índice secundario del catálogo
+
+Para no recorrer toda la tabla cuando se listan productos, el seed crea dos proyecciones de catálogo en `GSI1`:
+
+- Catálogo total: `GSI1PK = CATALOG#ALL`, `GSI1SK = PRODUCT#<categoría>#<nombre>#<id>`
+- Catálogo por categoría: `GSI1PK = CATEGORY#<categoría>`, `GSI1SK = PRODUCT#<nombre>#<id>`
+
+Además, el ítem base del producto conserva `PK = PRODUCT#<id>` y `SK = #METADATA` para acceder al detalle completo del producto.
 
 ## Estrategia de cache
 
