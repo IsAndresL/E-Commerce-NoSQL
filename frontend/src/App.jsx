@@ -43,7 +43,6 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
 
   const handleAddToCart = (product) => {
     addToCart(product);
-    setCartOpen(true);
   };
 
   const handleNavigate = (dest) => {

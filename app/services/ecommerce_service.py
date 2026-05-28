@@ -123,7 +123,14 @@ class ECommerceService:
         for index, item in enumerate(checkout_request.items, start=1):
             quantity = self._coerce_int(item.quantity, default=1)
             unit_price = self._coerce_decimal(self._first_present(item.unit_price, item.price, default="0"))
-            subtotal = self._coerce_decimal(item.subtotal) if item.subtotal is not None else unit_price * Decimal(quantity)
+            if unit_price <= 0:
+                catalog_item = self.product_repo.get_product(item.product_id) or {}
+                unit_price = self._coerce_decimal(catalog_item.get("price"))
+
+            subtotal = self._coerce_decimal(item.subtotal)
+            if subtotal <= 0:
+                subtotal = unit_price * Decimal(quantity)
+
             total += subtotal
 
             stock_reservations[item.product_id] = stock_reservations.get(item.product_id, 0) + quantity

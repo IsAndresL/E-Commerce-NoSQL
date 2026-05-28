@@ -39,7 +39,7 @@ export default function DashboardPage({ onNavigate, userId }) {
   return (
     <div className="dashboard-page">
       <h1 className="page-title">Mi Mercado Global — Panel de Control</h1>
-      <p className="breadcrumb">Inicio › Usuario › {profile.user_id} › Pedidos Recientes</p>
+      <p className="breadcrumb">Inicio › Usuario › {profile.name} › Pedidos Recientes</p>
 
       <div className="dashboard-grid">
         {/* Profile card */}
@@ -59,7 +59,7 @@ export default function DashboardPage({ onNavigate, userId }) {
           <div className="profile-details">
             <p><strong>📍 Direcciones:</strong></p>
             <p className="detail-value">{profile.default_address}</p>
-            <p><strong>💳 Pagos:</strong></p>
+            <p><strong>💳 Metodos de Pago:</strong></p>
             <p className="detail-value">
               {(profile.payment_methods || []).join(", ")}
             </p>

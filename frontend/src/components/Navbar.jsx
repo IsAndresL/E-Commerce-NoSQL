@@ -61,7 +61,7 @@ export default function Navbar({ cartCount, user, activePage, onNavigate, onLogo
 
           {showProfile && (
             <div className="profile-dropdown">
-              <p className="dropdown-greeting">Bienvenido, <strong>{user?.user_id}</strong></p>
+              <p className="dropdown-greeting">Bienvenido, <strong>{user?.name}</strong></p>
               <p className="dropdown-address">
                 📍 <span>{user?.default_address}</span>
               </p>
