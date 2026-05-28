@@ -112,6 +112,18 @@ class LambdaStack(Stack):
         dynamo_table.grant_read_write_data(products_fn)
         lambda_functions.append(("/products", apigwv2.HttpMethod.GET, products_fn))
 
+        categories_fn = _lambda.Function(
+            self,
+            "ProductsCategories",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            handler="lambdas.products.list_categories.lambda_handler",
+            code=lambda_code,
+            environment=shared_env,
+            timeout=Duration.seconds(10),
+        )
+        dynamo_table.grant_read_write_data(categories_fn)
+        lambda_functions.append(("/products/categories", apigwv2.HttpMethod.GET, categories_fn))
+
         # Enable CORS for the frontend (allow all origins for local dev)
         http_api = apigwv2.HttpApi(
             self,
