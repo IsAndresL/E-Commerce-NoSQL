@@ -1,10 +1,21 @@
 import { formatCOP } from "../utils/formatters";
 import { IconCart, IconBrand, IconClose, IconTrash } from "./icons/Icons";
 
-export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, onClose, onCheckout, checkoutLoading = false }) {
-  const shipping = total >= 180000 ? 0 : items.length > 0 ? 14900 : 0;
-  const grandTotal = total + shipping;
-
+export default function CartDrawer({
+  items,
+  total,
+  shipping = 0,
+  grandTotal = total + shipping,
+  onUpdateQuantity,
+  onRemove,
+  onClose,
+  onExploreProducts,
+  onCheckout,
+  checkoutLoading = false,
+  loading = false,
+  mutating = false,
+  error = "",
+}) {
   return (
     <div className="cart-overlay" onClick={onClose}>
       <aside className="cart-drawer" onClick={(e) => e.stopPropagation()}>
@@ -13,7 +24,11 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
           <button className="close-btn" onClick={onClose}><IconClose className="close-icon" /></button>
         </div>
 
-        {items.length === 0 ? (
+        {loading ? (
+          <div className="cart-empty">
+            <p><IconBrand className="empty-brand-icon" /> Cargando carrito...</p>
+          </div>
+        ) : items.length === 0 ? (
           <div className="cart-empty">
             <p><IconBrand className="empty-brand-icon" /> Tu carrito está vacío</p>
             <div className="empty-trust">
@@ -21,7 +36,7 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
               <span>Checkout como invitado</span>
               <span>Mercado Pago · PayU · ePayco</span>
             </div>
-            <button className="btn-primary" onClick={onClose}>
+            <button className="btn-primary" onClick={onExploreProducts || onClose}>
               Explorar productos
             </button>
           </div>
@@ -37,16 +52,21 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
                   />
                   <div className="cart-item-info">
                     <p className="cart-item-name">{item.name}</p>
-                    <p className="cart-item-price">{formatCOP(item.price)}</p>
+                    <p className="cart-item-price">{formatCOP(item.unit_price)}</p>
                     <div className="qty-controls">
-                      <button onClick={() => onUpdateQuantity(item.product_id, item.quantity - 1)}>−</button>
+                      <button disabled={mutating} onClick={() => onUpdateQuantity(item.product_id, item.quantity - 1)}>−</button>
                       <span>{item.quantity}</span>
-                      <button onClick={() => onUpdateQuantity(item.product_id, item.quantity + 1)}>+</button>
+                      <button
+                        disabled={mutating || item.quantity >= item.stock_available}
+                        onClick={() => onUpdateQuantity(item.product_id, item.quantity + 1)}
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
                   <div className="cart-item-right">
-                    <p className="cart-item-subtotal">{formatCOP(item.price * item.quantity)}</p>
-                    <button className="remove-btn" onClick={() => onRemove(item.product_id)}><IconTrash className="trash-icon" /></button>
+                    <p className="cart-item-subtotal">{formatCOP(item.subtotal)}</p>
+                    <button className="remove-btn" disabled={mutating} onClick={() => onRemove(item.product_id)}><IconTrash className="trash-icon" /></button>
                   </div>
                 </div>
               ))}
@@ -76,8 +96,9 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
                 <span>Mercado Pago</span>
                 <span>PayU</span>
               </div>
+              {error && <p className="checkout-note">{error}</p>}
               <p className="checkout-note">Compra como invitado o con cuenta. Mostramos costos antes de completar el pago.</p>
-              <button className="btn-checkout" onClick={onCheckout} disabled={checkoutLoading}>
+              <button className="btn-checkout" onClick={onCheckout} disabled={checkoutLoading || mutating}>
                 {checkoutLoading ? "Procesando pago..." : "Proceder al pago seguro →"}
               </button>
             </div>

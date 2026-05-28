@@ -25,7 +25,16 @@ async function apiFetch(path, options = {}) {
     headers: requestHeaders,
     body: hasBody ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const payload = await res.json();
+      detail = payload?.detail || detail;
+    } catch {
+      // Keep the HTTP status text when the backend does not return JSON.
+    }
+    throw new Error(`Error ${res.status}: ${detail}`);
+  }
   return res.json();
 }
 
@@ -55,6 +64,31 @@ export const getProducts = () =>
 
 export const getUsers = () =>
   apiFetch(`/ecommerce/users`);
+
+export const getCart = (userId) =>
+  apiFetch(`/ecommerce/user/${userId}/cart`);
+
+export const addCartItem = (userId, productId, quantity = 1) =>
+  apiFetch(`/ecommerce/user/${userId}/cart/items`, {
+    method: "POST",
+    body: { product_id: productId, quantity },
+  });
+
+export const updateCartItem = (userId, productId, quantity) =>
+  apiFetch(`/ecommerce/user/${userId}/cart/items/${productId}`, {
+    method: "PATCH",
+    body: { quantity },
+  });
+
+export const removeCartItem = (userId, productId) =>
+  apiFetch(`/ecommerce/user/${userId}/cart/items/${productId}`, {
+    method: "DELETE",
+  });
+
+export const clearCartItems = (userId) =>
+  apiFetch(`/ecommerce/user/${userId}/cart`, {
+    method: "DELETE",
+  });
 
 export const createOrder = (userId, payload) =>
   apiFetch(`/ecommerce/user/${userId}/orders`, {

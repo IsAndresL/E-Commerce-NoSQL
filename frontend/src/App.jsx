@@ -37,12 +37,29 @@ export default function App() {
 
 function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogout }) {
   const { profile } = useUserProfile(userId);
-  const { items, addToCart, removeFromCart, updateQuantity, clearCart, total, count } = useCart();
+  const {
+    items,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    total,
+    shipping,
+    grandTotal,
+    count,
+    loading: cartLoading,
+    mutating: cartMutating,
+    error: cartError,
+    refreshCart,
+  } = useCart(userId);
   const [navbarSearch, setNavbarSearch] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  const handleAddToCart = (product) => {
-    addToCart(product);
+  const handleAddToCart = async (product) => {
+    try {
+      await addToCart(product);
+    } catch (error) {
+      alert(error?.message || "No se pudo agregar el producto al carrito.");
+    }
   };
 
   const handleNavigate = (dest) => {
@@ -58,13 +75,10 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
 
     setCheckoutLoading(true);
     try {
-      const shippingCost = total >= 180000 ? 0 : 14900;
       await createOrder(userId, {
         shipping_address: profile?.default_address || profile?.addresses?.[0] || "",
-        shipping_cost: shippingCost,
-        items,
       });
-      clearCart();
+      await refreshCart();
       setCartOpen(false);
       setPage("dashboard");
     } catch (error) {
@@ -116,11 +130,20 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
         <CartDrawer
           items={items}
           total={total}
+          shipping={shipping}
+          grandTotal={grandTotal}
           onUpdateQuantity={updateQuantity}
           onRemove={removeFromCart}
           onClose={() => setCartOpen(false)}
+          onExploreProducts={() => {
+            setCartOpen(false);
+            setPage("store");
+          }}
           onCheckout={handleCheckout}
           checkoutLoading={checkoutLoading}
+          loading={cartLoading}
+          mutating={cartMutating}
+          error={cartError}
         />
       )}
     </div>
