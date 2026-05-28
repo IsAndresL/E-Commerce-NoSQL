@@ -139,6 +139,7 @@ Una vez desplegado, prueba estas rutas:
 
 - `GET /ecommerce/user/1/profile`
 - `GET /ecommerce/user/1/orders`
+- `POST /ecommerce/user/1/orders`
 - `GET /ecommerce/order/<order_id>/details`
 - `GET /ecommerce/order/<order_id>/items`
 - `GET /ecommerce/user/1/order/<order_id>/details`

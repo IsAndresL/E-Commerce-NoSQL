@@ -1,4 +1,7 @@
 from app.models.ecommerce import (
+	CheckoutItem,
+	CheckoutRequest,
+	CheckoutResponse,
 	DashboardResponse,
 	OrderDetails,
 	OrderItem,
@@ -7,6 +10,9 @@ from app.models.ecommerce import (
 )
 
 __all__ = [
+	"CheckoutItem",
+	"CheckoutRequest",
+	"CheckoutResponse",
 	"DashboardResponse",
 	"OrderDetails",
 	"OrderItem",

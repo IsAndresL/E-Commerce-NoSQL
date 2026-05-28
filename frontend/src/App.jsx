@@ -7,6 +7,7 @@ import LoginPage from "./pages/LoginPage";
 import { useCart } from "./hooks/useCart";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useSession } from "./hooks/useSession";
+import { createOrder } from "./api/ecommerceApi";
 
 export default function App() {
   const [page, setPage] = useState("store"); // "store" | "dashboard" | "cart"
@@ -38,6 +39,7 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
   const { profile } = useUserProfile(userId);
   const { items, addToCart, removeFromCart, updateQuantity, clearCart, total, count } = useCart();
   const [navbarSearch, setNavbarSearch] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const handleAddToCart = (product) => {
     addToCart(product);
@@ -49,6 +51,27 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
       setCartOpen(true);
     } else {
       setPage(dest);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!items.length || checkoutLoading) return;
+
+    setCheckoutLoading(true);
+    try {
+      const shippingCost = total >= 180000 ? 0 : 14900;
+      await createOrder(userId, {
+        shipping_address: profile?.default_address || profile?.addresses?.[0] || "",
+        shipping_cost: shippingCost,
+        items,
+      });
+      clearCart();
+      setCartOpen(false);
+      setPage("dashboard");
+    } catch (error) {
+      alert(error?.message || "No se pudo registrar el pedido.");
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -97,11 +120,8 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
           onUpdateQuantity={updateQuantity}
           onRemove={removeFromCart}
           onClose={() => setCartOpen(false)}
-          onCheckout={() => {
-            alert("¡Gracias por tu compra! (checkout no implementado aún)");
-            clearCart();
-            setCartOpen(false);
-          }}
+          onCheckout={handleCheckout}
+          checkoutLoading={checkoutLoading}
         />
       )}
     </div>

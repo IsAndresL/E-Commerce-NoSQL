@@ -7,11 +7,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/ecommerce": {
-        target: process.env.VITE_API_URL || "http://localhost:4566",
+        target: process.env.VITE_API_PROXY_TARGET || process.env.VITE_API_URL || "http://localhost:4566",
         changeOrigin: true,
       },
       "/products": {
-        target: process.env.VITE_API_URL || "http://localhost:4566",
+        target: process.env.VITE_API_PROXY_TARGET || process.env.VITE_API_URL || "http://localhost:4566",
         changeOrigin: true,
       },
     },

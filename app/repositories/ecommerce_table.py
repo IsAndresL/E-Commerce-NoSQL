@@ -37,6 +37,12 @@ class ECommerceTable:
                 return True
         return False
 
+    def save_order_records(self, records: list[dict]):
+        with self.adapter.table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as batch:
+            for record in records:
+                batch.put_item(Item=record)
+        return records
+
     def _normalize_order_id(self, value):
         text = str(value or "").strip().upper()
         if text.startswith("ORDER#"):

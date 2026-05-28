@@ -36,6 +36,31 @@ class OrderItem(BaseModel):
     quantity: str | int = "1"
     unit_price: str | int | float = "0"
     subtotal: str | int | float = "0"
+    image_url: str = ""
+
+
+class CheckoutItem(BaseModel):
+    product_id: str
+    name: str
+    quantity: str | int = "1"
+    unit_price: str | int | float = "0"
+    price: str | int | float | None = None
+    subtotal: str | int | float | None = None
+    image_url: str = ""
+    category: str = ""
+
+
+class CheckoutRequest(BaseModel):
+    items: list[CheckoutItem] = Field(default_factory=list)
+    shipping_address: str = ""
+    shipping_cost: str | int | float = 0
+
+
+class CheckoutResponse(BaseModel):
+    user_id: str
+    order_summary: OrderSummary
+    order_details: OrderDetails
+    items: list[OrderItem] = Field(default_factory=list)
 
 
 class DashboardResponse(BaseModel):

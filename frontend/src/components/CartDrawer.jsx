@@ -1,6 +1,6 @@
 import { formatCOP } from "../utils/formatters";
 
-export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, onClose, onCheckout }) {
+export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, onClose, onCheckout, checkoutLoading = false }) {
   const shipping = total >= 180000 ? 0 : items.length > 0 ? 14900 : 0;
   const grandTotal = total + shipping;
 
@@ -76,8 +76,8 @@ export default function CartDrawer({ items, total, onUpdateQuantity, onRemove, o
                 <span>PayU</span>
               </div>
               <p className="checkout-note">Compra como invitado o con cuenta. Mostramos costos antes de completar el pago.</p>
-              <button className="btn-checkout" onClick={onCheckout}>
-                Proceder al pago seguro →
+              <button className="btn-checkout" onClick={onCheckout} disabled={checkoutLoading}>
+                {checkoutLoading ? "Procesando pago..." : "Proceder al pago seguro →"}
               </button>
             </div>
           </>

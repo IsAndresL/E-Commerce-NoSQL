@@ -1,6 +1,5 @@
 import os
 from typing import cast
-from typing import Dict
 
 from aws_cdk import BundlingOptions, Duration, Stack, aws_dynamodb as dynamodb, aws_lambda as _lambda, CfnOutput
 from aws_cdk import aws_apigatewayv2 as apigwv2
@@ -68,21 +67,21 @@ class LambdaStack(Stack):
             "REDIS_CACHE_TTL_SECONDS": "120",
         }
 
-        handlers = {
-            "/ecommerce/users": "list_users",
-            "/ecommerce/user/{user_id}/profile": "get_user_profile",
-            "/ecommerce/user/{user_id}/orders": "get_recent_orders",
-            "/ecommerce/order/{order_id}/details": "get_order_details",
-            "/ecommerce/order/{order_id}/items": "get_order_items",
-            "/ecommerce/user/{user_id}/order/{order_id}/details": "get_user_order_details",
-            "/ecommerce/user/{user_id}/order/{order_id}/items": "get_user_order_items",
-            "/ecommerce/dashboard-data": "dashboard_data",
-        }
+        route_definitions = [
+            ("/ecommerce/users", apigwv2.HttpMethod.GET, "list_users"),
+            ("/ecommerce/user/{user_id}/profile", apigwv2.HttpMethod.GET, "get_user_profile"),
+            ("/ecommerce/user/{user_id}/orders", apigwv2.HttpMethod.GET, "get_recent_orders"),
+            ("/ecommerce/user/{user_id}/orders", apigwv2.HttpMethod.POST, "create_order"),
+            ("/ecommerce/order/{order_id}/details", apigwv2.HttpMethod.GET, "get_order_details"),
+            ("/ecommerce/order/{order_id}/items", apigwv2.HttpMethod.GET, "get_order_items"),
+            ("/ecommerce/user/{user_id}/order/{order_id}/details", apigwv2.HttpMethod.GET, "get_user_order_details"),
+            ("/ecommerce/user/{user_id}/order/{order_id}/items", apigwv2.HttpMethod.GET, "get_user_order_items"),
+            ("/ecommerce/dashboard-data", apigwv2.HttpMethod.GET, "dashboard_data"),
+        ]
 
-        lambda_map: Dict[str, _lambda.Function] = {}
+        lambda_functions = []
 
-
-        for path, module in handlers.items():
+        for path, method, module in route_definitions:
             fn = _lambda.Function(
                 self,
                 f"Ecommerce_{module}",
@@ -93,7 +92,7 @@ class LambdaStack(Stack):
                 timeout=Duration.seconds(10),
             )
             dynamo_table.grant_read_write_data(fn)
-            lambda_map[path] = fn
+            lambda_functions.append((path, method, fn))
 
         products_fn = _lambda.Function(
             self,
@@ -105,7 +104,7 @@ class LambdaStack(Stack):
             timeout=Duration.seconds(10),
         )
         dynamo_table.grant_read_write_data(products_fn)
-        lambda_map["/products"] = products_fn
+        lambda_functions.append(("/products", apigwv2.HttpMethod.GET, products_fn))
 
         # Enable CORS for the frontend (allow all origins for local dev)
         http_api = apigwv2.HttpApi(
@@ -114,19 +113,19 @@ class LambdaStack(Stack):
             api_name="EcommerceHttpApi",
             cors_preflight=apigwv2.CorsPreflightOptions(
                 allow_origins=["http://localhost:5173"],
-                allow_methods=[apigwv2.CorsHttpMethod.GET, apigwv2.CorsHttpMethod.OPTIONS],
+                allow_methods=[apigwv2.CorsHttpMethod.GET, apigwv2.CorsHttpMethod.POST, apigwv2.CorsHttpMethod.OPTIONS],
                 allow_headers=["*"],
             ),
         )
 
-        for path, fn in lambda_map.items():
+        for path, method, fn in lambda_functions:
             integration = apigwv2_integrations.HttpLambdaIntegration(
                 f"Integration_{fn.node.id}",
                 cast(_lambda.IFunction, fn),
             )
             http_api.add_routes(
                 path=path,
-                methods=[apigwv2.HttpMethod.GET],
+                methods=[method],
                 integration=integration,
             )
 

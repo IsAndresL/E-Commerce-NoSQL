@@ -6,7 +6,7 @@ HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 }
 
 def ok(data: Any) -> dict:
@@ -21,6 +21,11 @@ def ok(data: Any) -> dict:
     else:
         body = json.dumps(data)
     return {"statusCode": 200, "headers": HEADERS, "body": body}
+
+def created(data: Any) -> dict:
+    response = ok(data)
+    response["statusCode"] = 201
+    return response
 
 def not_found(msg: str = "Not found") -> dict:
     return {"statusCode": 404, "headers": HEADERS, "body": json.dumps({"detail": msg})}

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Mapping
 
 from app.core.config import get_settings
 from app.db.redis import get_redis_cache
-from app.models.ecommerce import OrderDetails, OrderItem, OrderSummary, UserProfile
+from app.models.ecommerce import CheckoutRequest, CheckoutResponse, OrderDetails, OrderItem, OrderSummary, UserProfile
 from app.repositories.ecommerce_table import ECommerceTable
+from app.repositories.product_repo import ProductRepository
 
 
 class ECommerceService:
@@ -14,6 +16,7 @@ class ECommerceService:
 
     def __init__(self, table: ECommerceTable | None = None):
         self.table = table or ECommerceTable()
+        self.product_repo = ProductRepository()
         self.cache = get_redis_cache()
         self.cache_ttl_seconds = get_settings().redis_cache_ttl_seconds
 
@@ -94,6 +97,114 @@ class ECommerceService:
     def user_has_order(self, user_id: str, order_id: str) -> bool:
         return self.table.user_has_order(user_id, order_id)
 
+    def create_order(self, user_id: str, checkout_request: CheckoutRequest) -> CheckoutResponse:
+        profile = self.get_user_profile(user_id)
+        if not profile:
+            raise ValueError("User not found")
+
+        if not checkout_request.items:
+            raise ValueError("Cart is empty")
+
+        now = datetime.now(timezone.utc)
+        order_stamp = now.strftime("%Y%m%d%H%M%S%f")
+        order_id = f"ORD#{order_stamp}"
+        created_at = now.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        shipping_address = (
+            checkout_request.shipping_address
+            or profile.default_address
+            or (profile.addresses[0] if profile.addresses else "Sin direccion")
+        ).strip()
+
+        order_items: list[OrderItem] = []
+        records: list[dict[str, Any]] = []
+        stock_reservations: dict[str, int] = {}
+        total = Decimal("0")
+
+        for index, item in enumerate(checkout_request.items, start=1):
+            quantity = self._coerce_int(item.quantity, default=1)
+            unit_price = self._coerce_decimal(self._first_present(item.unit_price, item.price, default="0"))
+            subtotal = self._coerce_decimal(item.subtotal) if item.subtotal is not None else unit_price * Decimal(quantity)
+            total += subtotal
+
+            stock_reservations[item.product_id] = stock_reservations.get(item.product_id, 0) + quantity
+
+            order_items.append(
+                OrderItem(
+                    product_id=item.product_id,
+                    name=item.name,
+                    quantity=quantity,
+                    unit_price=unit_price,
+                    subtotal=subtotal,
+                    image_url=item.image_url,
+                )
+            )
+            records.append(
+                {
+                    "PK": f"ORDER#{order_stamp}",
+                    "SK": f"ITEM#{index}",
+                    "product_id": item.product_id,
+                    "name": item.name,
+                    "quantity": quantity,
+                    "unit_price": unit_price,
+                    "subtotal": subtotal,
+                    "image_url": item.image_url,
+                    "category": item.category,
+                }
+            )
+
+        shipping_cost = self._coerce_decimal(checkout_request.shipping_cost)
+        total += shipping_cost
+
+        for product_id, quantity in stock_reservations.items():
+            self.product_repo.reserve_stock(product_id, quantity)
+
+        self._invalidate_product_caches(stock_reservations.keys())
+
+        summary = OrderSummary(
+            id=order_id,
+            status="Pago exitoso",
+            created_at=created_at,
+            shipping_address=shipping_address,
+            total=total,
+        )
+        details = OrderDetails(
+            order_id=order_id,
+            date=created_at,
+            status="Pago exitoso",
+            shipping_address=shipping_address,
+            total=total,
+        )
+
+        records.insert(
+            0,
+            {
+                "PK": f"USER#{user_id}",
+                "SK": f"ORDER#{order_stamp}",
+                "id": order_id,
+                "status": summary.status,
+                "created_at": created_at,
+                "shipping_address": shipping_address,
+                "total": total,
+            },
+        )
+        records.insert(
+            1,
+            {
+                "PK": f"ORDER#{order_stamp}",
+                "SK": "DETAILS",
+                "order_id": order_id,
+                "date": created_at,
+                "status": details.status,
+                "shipping_address": shipping_address,
+                "total": total,
+            },
+        )
+
+        self.table.save_order_records(records)
+        self._invalidate_order_caches(user_id, order_id)
+
+        return CheckoutResponse(user_id=user_id, order_summary=summary, order_details=details, items=order_items)
+
     def _normalize_profile(self, profile: Mapping[str, Any]) -> UserProfile:
         payment_methods = self._pick_list(profile, "payment_methods", "payments", "Metodos de pago", default=["Sin metodos"])
         raw_user_id = self._pick_str(profile, "PK", "user_id", default="0")
@@ -133,6 +244,7 @@ class ECommerceService:
             quantity=self._pick_quantity(item, "quantity", "Cantidad", default="1"),
             unit_price=self._pick_number_like(item, "unit_price", "Precio", "Precio_Unitario_Compra", default="0"),
             subtotal=self._pick_number_like(item, "subtotal", "Subtotal", default="0"),
+            image_url=self._pick_str(item, "image_url", "image", default=""),
         )
 
     def _pick(self, data: Mapping[str, Any], *keys: str, default: Any = None) -> Any:
@@ -172,3 +284,34 @@ class ECommerceService:
         suffix = ":".join(str(part).strip() for part in parts if str(part).strip())
         base = f"ecommerce:{self.CACHE_VERSION}:{kind}"
         return f"{base}:{suffix}" if suffix else base
+
+    def _invalidate_order_caches(self, user_id: str, order_id: str) -> None:
+        self.cache.delete(
+            self._cache_key("orders", user_id),
+            self._cache_key("order-details", order_id),
+            self._cache_key("order-items", order_id),
+            self._cache_key("dashboard", user_id, order_id),
+        )
+
+    def _invalidate_product_caches(self, product_ids) -> None:
+        keys = [self._cache_key("products", "list")]
+        keys.extend(self._cache_key("products", product_id) for product_id in product_ids)
+        self.cache.delete(*keys)
+
+    def _coerce_decimal(self, value: Any) -> Decimal:
+        try:
+            return Decimal(str(value))
+        except Exception:
+            return Decimal("0")
+
+    def _coerce_int(self, value: Any, default: int = 1) -> int:
+        try:
+            return max(1, int(Decimal(str(value))))
+        except Exception:
+            return default
+
+    def _first_present(self, *values: Any, default: Any = None) -> Any:
+        for value in values:
+            if value not in (None, ""):
+                return value
+        return default
