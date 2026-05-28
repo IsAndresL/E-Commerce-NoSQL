@@ -1,6 +1,6 @@
 .PHONY: help up down ensure-deployer wait-ministack install-infra-deps bootstrap deploy create-table seed test-api validate logs-frontend logs-ministack clean
 
-DOCKER_COMPOSE := sudo docker compose
+DOCKER_COMPOSE ?= $(shell docker info >/dev/null 2>&1 && echo docker compose || echo sudo docker compose)
 AWS_ACCESS_KEY_ID ?= test
 AWS_SECRET_ACCESS_KEY ?= test
 AWS_REGION ?= us-east-1
@@ -67,7 +67,7 @@ bootstrap: wait-ministack
 
 deploy: bootstrap
 	@echo "Limpiando cdk.out anterior..."
-	@sudo rm -rf cdk.out
+	@$(DOCKER_COMPOSE) exec -T cdk-deployer rm -rf cdk.out
 	@echo "Deploying lambdas and API Gateway..."
 	@$(DOCKER_COMPOSE) exec -T $(DEPLOYER_ENV) cdk-deployer sh -lc '\
 		cdk deploy --all --require-approval never --outputs-file /tmp/cdk-outputs.json --app ".infra_venv/bin/python3 -m infra.app"'
@@ -85,5 +85,7 @@ test-api: wait-ministack
 	@$(DOCKER_COMPOSE) exec -T $(DEPLOYER_ENV) cdk-deployer sh -lc 'PATH="$$PWD/.infra_venv/bin:$$PATH" sh scripts/test_api_gateway.sh'
 
 clean:
+	@$(DOCKER_COMPOSE) up -d cdk-deployer >/dev/null 2>&1 || true
+	@$(DOCKER_COMPOSE) exec -T cdk-deployer rm -rf cdk.out .infra_venv >/dev/null 2>&1 || true
 	@$(DOCKER_COMPOSE) down -v --remove-orphans
-	@sudo rm -rf cdk.out .infra_venv
+	

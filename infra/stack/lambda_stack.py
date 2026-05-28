@@ -1,7 +1,7 @@
 import os
 from typing import cast
 
-from aws_cdk import BundlingOptions, Duration, Stack, aws_dynamodb as dynamodb, aws_lambda as _lambda, CfnOutput
+from aws_cdk import BundlingFileAccess, BundlingOptions, Duration, Stack, aws_dynamodb as dynamodb, aws_lambda as _lambda, CfnOutput
 from aws_cdk import aws_apigatewayv2 as apigwv2
 from aws_cdk import aws_apigatewayv2_integrations as apigwv2_integrations
 from constructs import Construct
@@ -49,6 +49,7 @@ class LambdaStack(Stack):
             exclude=_ASSET_EXCLUDE,
             bundling=BundlingOptions(
                 image=_lambda.Runtime.PYTHON_3_11.bundling_image,
+                bundling_file_access=BundlingFileAccess.VOLUME_COPY,
                 command=[
                     "sh",
                     "-lc",

@@ -190,12 +190,12 @@ El frontend corre en Vite y consume la API desplegada por CDK. Cuando `make depl
 Para abrirlo:
 
 ```bash
-sudo docker compose up -d frontend
+docker compose up -d frontend
 ```
 
 Luego entra a `http://localhost:5173`.
 
-"Si ya hiciste make up entra directamente"
+Si tu instalación de Docker requiere permisos de administrador, usa el mismo comando con `sudo`. Si ya hiciste `make up`, el frontend ya queda levantado.
 
 ## Apagar todo
 

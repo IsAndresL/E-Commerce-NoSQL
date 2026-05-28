@@ -28,9 +28,9 @@ services:
   cdk-deployer:
     image: node:22-alpine
     container_name: ecommerce-cdk-deployer
-    working_dir: /home/capitan/Documentos/NoSql/E-Commerce-NoSQL
+    working_dir: /workspace
     volumes:
-      - ./:/home/capitan/Documentos/NoSql/E-Commerce-NoSQL
+      - ./:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       AWS_ACCESS_KEY_ID: test

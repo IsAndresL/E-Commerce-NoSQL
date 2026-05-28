@@ -22,7 +22,7 @@ check() {
     fi
 }
 
-aws_cmd() { aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" "$@"; }
+aws_cmd() { python3 -m awscli --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_REGION" "$@"; }
 
 invoke_lambda() {
     local fn="$1" payload="$2" out="/tmp/lr_$$.json"
