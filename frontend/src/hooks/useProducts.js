@@ -1,22 +1,58 @@
-import { useState, useEffect } from "react";
-import { getProducts } from "../api/ecommerceApi";
+import { useCallback, useEffect, useState } from "react";
+import { getProductCategories, getProducts } from "../api/ecommerceApi";
 
-export function useProducts() {
+export function useProducts({ category = "", search = "", limit = 12 } = {}) {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [nextCursor, setNextCursor] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    getProducts()
-      .then((data) => {
-        setProducts(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        setProducts([]);
+  const fetchProducts = useCallback(
+    async ({ cursor = "", append = false } = {}) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      try {
+        const data = await getProducts({
+          category,
+          search,
+          limit,
+          cursor,
+        });
+        const items = Array.isArray(data) ? data : data.items || [];
+        setProducts((prev) => (append ? [...prev, ...items] : items));
+        setNextCursor(Array.isArray(data) ? "" : data.next_cursor || "");
+      } catch {
+        if (!append) setProducts([]);
         setError("No se encontraron productos");
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [category, limit, search]
+  );
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    getProductCategories()
+      .then((data) => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => setCategories([]));
   }, []);
 
-  return { products, loading, error };
+  const loadMore = useCallback(() => {
+    if (!nextCursor || loadingMore) return;
+    fetchProducts({ cursor: nextCursor, append: true });
+  }, [fetchProducts, loadingMore, nextCursor]);
+
+  return { products, categories, loading, loadingMore, error, nextCursor, loadMore };
 }

@@ -23,5 +23,3 @@ export const statusColor = (status) => {
   if (s.includes("cancelado")) return "status-error";
   return "status-pending";
 };
-
-export const CATEGORIES = ["Todos", "Electrónica", "Ropa", "Hogar", "Deportes"];

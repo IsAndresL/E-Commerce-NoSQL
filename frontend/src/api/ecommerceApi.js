@@ -59,8 +59,22 @@ export const getUserOrderItems = (userId, orderId) =>
 export const getDashboardData = () =>
   apiFetch(`/ecommerce/dashboard-data`);
 
-export const getProducts = () =>
-  apiFetch(`/products`);
+function toQueryString(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, value);
+    }
+  });
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : "";
+}
+
+export const getProducts = (params = {}) =>
+  apiFetch(`/products${toQueryString(params)}`);
+
+export const getProductCategories = () =>
+  apiFetch(`/products/categories`);
 
 export const getUsers = () =>
   apiFetch(`/ecommerce/users`);

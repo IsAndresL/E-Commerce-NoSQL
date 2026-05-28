@@ -490,6 +490,12 @@ svg.icon, .icon {
   gap: 20px;
 }
 
+.catalog-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
 /* Skeleton */
 .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
 .skeleton-card {

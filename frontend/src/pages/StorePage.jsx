@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hooks/useProducts";
-import { CATEGORIES, formatCOP } from "../utils/formatters";
 import { getMerchandising } from "../utils/merchandising";
 import { IconClose, IconStar } from "../components/icons/Icons";
 
@@ -29,76 +28,35 @@ const BANNERS = {
   
 };
 
-function normalizeText(value = "") {
-  return value
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function levenshteinDistance(source, target) {
-  if (source === target) return 0;
-  if (!source.length) return target.length;
-  if (!target.length) return source.length;
-
-  const rows = Array.from({ length: source.length + 1 }, (_, row) => [row]);
-
-  for (let column = 1; column <= target.length; column += 1) {
-    rows[0][column] = column;
-  }
-
-  for (let row = 1; row <= source.length; row += 1) {
-    for (let column = 1; column <= target.length; column += 1) {
-      const substitutionCost = source[row - 1] === target[column - 1] ? 0 : 1;
-      rows[row][column] = Math.min(
-        rows[row - 1][column] + 1,
-        rows[row][column - 1] + 1,
-        rows[row - 1][column - 1] + substitutionCost
-      );
-    }
-  }
-
-  return rows[source.length][target.length];
-}
-
-function fuzzySearchMatches(haystack, query) {
-  const normalizedHaystack = normalizeText(haystack);
-  const normalizedQuery = normalizeText(query);
-
-  if (!normalizedQuery) return true;
-  if (normalizedHaystack.includes(normalizedQuery)) return true;
-
-  const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
-  const haystackTokens = normalizedHaystack.split(/\s+/).filter(Boolean);
-
-  return queryTokens.every((queryToken) => {
-    if (normalizedHaystack.includes(queryToken)) return true;
-
-    return haystackTokens.some((candidate) => {
-      if (candidate.startsWith(queryToken) || queryToken.startsWith(candidate)) return true;
-
-      const shortTokenAllowance = queryToken.length <= 4 ? 1 : 2;
-      const lengthGap = Math.abs(candidate.length - queryToken.length);
-      if (lengthGap > shortTokenAllowance) return false;
-
-      return levenshteinDistance(candidate, queryToken) <= shortTokenAllowance;
-    });
-  });
-}
-
 export default function StorePage({ onAddToCart, cartItems = [], initialSearch = "", onSearchChange }) {
-  const { products, loading } = useProducts();
   const [search, setSearch] = useState(initialSearch);
+  const [backendSearch, setBackendSearch] = useState(initialSearch);
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const selectedCategory = activeCategory === "Todos" ? "" : activeCategory;
+  const { products, categories, loading, loadingMore, nextCursor, loadMore } = useProducts({
+    category: selectedCategory,
+    search: backendSearch,
+    limit: 12,
+  });
+  const categoryOptions = useMemo(
+    () => ["Todos", ...categories.map((category) => category.name).filter(Boolean)],
+    [categories]
+  );
 
   // Sincronizar búsqueda con navbar
   useEffect(() => {
     setSearch(initialSearch);
   }, [initialSearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setBackendSearch(search);
+      onSearchChange?.(search);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [onSearchChange, search]);
 
   const enrichedProducts = useMemo(() => {
     return products.map((product) => ({ ...product, merch: getMerchandising(product) }));
@@ -106,7 +64,7 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
 
   // Autorotate banners every 5 seconds
   useEffect(() => {
-    const banners = BANNERS[activeCategory] || [];
+    const banners = BANNERS[activeCategory] || BANNERS.Todos || [];
     if (banners.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
@@ -119,19 +77,11 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
     setCurrentBannerIndex(0);
   }, [activeCategory]);
 
-  const filtered = useMemo(() => {
-    return enrichedProducts.filter((product) => {
-      const matchCat = activeCategory === "Todos" || product.category === activeCategory;
-      const matchSearch = fuzzySearchMatches([product.name, product.category].join(" "), search);
-      return matchCat && matchSearch;
-    });
-  }, [enrichedProducts, search, activeCategory]);
-
   return (
     <div className="store-page">
       {/* Category Selector */}
       <div className="category-selector">
-        {CATEGORIES.map((cat) => (
+        {categoryOptions.map((cat) => (
           <button
             key={cat}
             className={`category-select-btn ${activeCategory === cat ? "active" : ""}`}
@@ -144,18 +94,18 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
 
       {/* Banner Carousel */}
       <div className="banner-carousel">
-        {(BANNERS[activeCategory] || []).length > 0 && (
+        {(BANNERS[activeCategory] || BANNERS.Todos || []).length > 0 && (
           <>
             <img
-              src={BANNERS[activeCategory][currentBannerIndex]?.image}
-              alt={BANNERS[activeCategory][currentBannerIndex]?.title}
+              src={(BANNERS[activeCategory] || BANNERS.Todos)[currentBannerIndex]?.image}
+              alt={(BANNERS[activeCategory] || BANNERS.Todos)[currentBannerIndex]?.title}
               className="banner-image"
             />
             <div className="banner-overlay">
-              <h2>{BANNERS[activeCategory][currentBannerIndex]?.title}</h2>
+              <h2>{(BANNERS[activeCategory] || BANNERS.Todos)[currentBannerIndex]?.title}</h2>
             </div>
             <div className="carousel-dots">
-              {(BANNERS[activeCategory] || []).map((_, idx) => (
+              {(BANNERS[activeCategory] || BANNERS.Todos).map((_, idx) => (
                 <button
                   key={idx}
                   className={`dot ${idx === currentBannerIndex ? "active" : ""}`}
@@ -168,8 +118,8 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
               onClick={() =>
                 setCurrentBannerIndex(
                   (prev) =>
-                    (prev - 1 + (BANNERS[activeCategory]?.length || 1)) %
-                    (BANNERS[activeCategory]?.length || 1)
+                    (prev - 1 + ((BANNERS[activeCategory] || BANNERS.Todos)?.length || 1)) %
+                    ((BANNERS[activeCategory] || BANNERS.Todos)?.length || 1)
                 )
               }
             >
@@ -178,7 +128,7 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
             <button
               className="carousel-nav next"
               onClick={() =>
-                setCurrentBannerIndex((prev) => (prev + 1) % (BANNERS[activeCategory]?.length || 1))
+                setCurrentBannerIndex((prev) => (prev + 1) % ((BANNERS[activeCategory] || BANNERS.Todos)?.length || 1))
               }
             >
               ›
@@ -193,7 +143,7 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
           {activeCategory === "Todos" ? "Todos nuestros productos" : `Categoría: ${activeCategory}`}
         </h2>
         <div className="catalog-stats">
-          <span>{filtered.length} resultados</span>
+          <span>{products.length} resultados cargados</span>
           <span>{cartItems.length} en carrito</span>
         </div>
 
@@ -203,12 +153,13 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
               <div key={i} className="skeleton-card" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : enrichedProducts.length === 0 ? (
           <div className="no-results">
             <p>No se encontraron productos</p>
             <button
               onClick={() => {
                 setSearch("");
+                setBackendSearch("");
                 setActiveCategory("Todos");
               }}
             >
@@ -216,20 +167,29 @@ export default function StorePage({ onAddToCart, cartItems = [], initialSearch =
             </button>
           </div>
         ) : (
-          <div className="products-grid">
-            {filtered.map((product) => (
-              <ProductCard
-                key={product.product_id}
-                product={product}
-                onAddToCart={onAddToCart}
-                onViewDetails={() => setSelectedProduct(product)}
-                onBuyNow={() => {
-                  onAddToCart(product);
-                  setSelectedProduct(product);
-                }}
-              />
-            ))}
-          </div>
+          <>
+            <div className="products-grid">
+              {enrichedProducts.map((product) => (
+                <ProductCard
+                  key={product.product_id}
+                  product={product}
+                  onAddToCart={onAddToCart}
+                  onViewDetails={() => setSelectedProduct(product)}
+                  onBuyNow={() => {
+                    onAddToCart(product);
+                    setSelectedProduct(product);
+                  }}
+                />
+              ))}
+            </div>
+            {nextCursor && (
+              <div className="catalog-load-more">
+                <button className="btn-secondary" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? "Cargando..." : "Cargar más"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
