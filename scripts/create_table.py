@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,47 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.core.config import get_settings
+
+def ensure_catalog_index(table):
+    table.load()
+    indexes = table.global_secondary_indexes or []
+    existing = next((index for index in indexes if index.get("IndexName") == "GSI1"), None)
+    if existing:
+        wait_for_catalog_index(table)
+        print("Catalog index 'GSI1' already exists.")
+        return
+
+    print("Creating catalog index 'GSI1'...")
+    table.update(
+        AttributeDefinitions=[
+            {"AttributeName": "GSI1PK", "AttributeType": "S"},
+            {"AttributeName": "GSI1SK", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexUpdates=[
+            {
+                "Create": {
+                    "IndexName": "GSI1",
+                    "KeySchema": [
+                        {"AttributeName": "GSI1PK", "KeyType": "HASH"},
+                        {"AttributeName": "GSI1SK", "KeyType": "RANGE"},
+                    ],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+            }
+        ],
+    )
+    wait_for_catalog_index(table)
+    print("Catalog index 'GSI1' created.")
+
+
+def wait_for_catalog_index(table):
+    for _ in range(60):
+        table.reload()
+        indexes = table.global_secondary_indexes or []
+        index = next((item for item in indexes if item.get("IndexName") == "GSI1"), None)
+        if index and index.get("IndexStatus") == "ACTIVE":
+            return
+        time.sleep(2)
 
 def create_ecommerce_table():
     """
@@ -39,6 +81,7 @@ def create_ecommerce_table():
 
     if table_name in existing_tables:
         print(f"Table '{table_name}' already exists.")
+        ensure_catalog_index(dynamodb.Table(table_name))
         return
 
     table = dynamodb.create_table(
@@ -50,11 +93,24 @@ def create_ecommerce_table():
         AttributeDefinitions=[
             {"AttributeName": "PK", "AttributeType": "S"},
             {"AttributeName": "SK", "AttributeType": "S"},
+            {"AttributeName": "GSI1PK", "AttributeType": "S"},
+            {"AttributeName": "GSI1SK", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "GSI1",
+                "KeySchema": [
+                    {"AttributeName": "GSI1PK", "KeyType": "HASH"},
+                    {"AttributeName": "GSI1SK", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "ALL"},
+            }
         ],
         BillingMode="PAY_PER_REQUEST",  # Modo de facturación
     )
 
     table.wait_until_exists()
+    ensure_catalog_index(table)
     print(f"Table '{table_name}' created successfully.")
 
 if __name__ == "__main__":

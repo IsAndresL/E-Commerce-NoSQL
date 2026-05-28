@@ -11,6 +11,7 @@ Cambios respecto al seed original:
 
 import os
 import sys
+import time
 from decimal import Decimal
 from pathlib import Path
 
@@ -55,6 +56,7 @@ def ensure_table_exists(dynamodb, table_name: str):
         table = dynamodb.Table(table_name)
         table.load()
         print(f"  ✓ Tabla '{table_name}' ya existe.")
+        ensure_catalog_index(table)
         return table
     except ClientError as exc:
         if exc.response.get("Error", {}).get("Code") != "ResourceNotFoundException":
@@ -70,12 +72,66 @@ def ensure_table_exists(dynamodb, table_name: str):
         AttributeDefinitions=[
             {"AttributeName": "PK", "AttributeType": "S"},
             {"AttributeName": "SK", "AttributeType": "S"},
+            {"AttributeName": "GSI1PK", "AttributeType": "S"},
+            {"AttributeName": "GSI1SK", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "GSI1",
+                "KeySchema": [
+                    {"AttributeName": "GSI1PK", "KeyType": "HASH"},
+                    {"AttributeName": "GSI1SK", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "ALL"},
+            }
         ],
         BillingMode="PAY_PER_REQUEST",
     )
     table.wait_until_exists()
+    ensure_catalog_index(table)
     print(f"  ✓ Tabla creada.")
     return table
+
+
+def ensure_catalog_index(table):
+    table.load()
+    indexes = table.global_secondary_indexes or []
+    existing = next((index for index in indexes if index.get("IndexName") == "GSI1"), None)
+    if existing:
+        wait_for_catalog_index(table)
+        return
+
+    print("  → Creando índice GSI1 para catálogo...")
+    table.update(
+        AttributeDefinitions=[
+            {"AttributeName": "GSI1PK", "AttributeType": "S"},
+            {"AttributeName": "GSI1SK", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexUpdates=[
+            {
+                "Create": {
+                    "IndexName": "GSI1",
+                    "KeySchema": [
+                        {"AttributeName": "GSI1PK", "KeyType": "HASH"},
+                        {"AttributeName": "GSI1SK", "KeyType": "RANGE"},
+                    ],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+            }
+        ],
+    )
+    wait_for_catalog_index(table)
+    print("  ✓ Índice GSI1 creado.")
+
+
+def wait_for_catalog_index(table):
+    for _ in range(60):
+        table.reload()
+        indexes = table.global_secondary_indexes or []
+        index = next((item for item in indexes if item.get("IndexName") == "GSI1"), None)
+        if index and index.get("IndexStatus") == "ACTIVE":
+            return
+        time.sleep(2)
 
 
 # ─────────────────────────────────────────────
@@ -1007,6 +1063,66 @@ def build_items() -> list[dict]:
         },
     ]
 
+    product_items = [
+        item
+        for item in items
+        if str(item.get("PK", "")).startswith("PRODUCT#") and item.get("SK") == "#METADATA"
+    ]
+    categories: dict[str, int] = {}
+    catalog_index_items: list[dict] = []
+
+    for product in product_items:
+        category = str(product.get("category") or "General")
+        product_id = str(product.get("product_id") or product["PK"].replace("PRODUCT#", ""))
+        name = str(product.get("name") or product_id)
+        categories[category] = categories.get(category, 0) + 1
+
+        product["GSI1PK"] = "PRODUCT#LOOKUP"
+        product["GSI1SK"] = f"PRODUCT#{product_id}"
+
+        catalog_projection = {
+            "product_id": product_id,
+            "name": name,
+            "description": product.get("description", ""),
+            "price": product.get("price", Decimal("0")),
+            "stock": product.get("stock", 0),
+            "category": category,
+            "image_url": product.get("image_url", ""),
+        }
+        catalog_index_items.append(
+            {
+                **catalog_projection,
+                "PK": "CATALOG#ALL",
+                "SK": f"PRODUCT#{product_id}",
+                "entity_type": "CATALOG_PRODUCT",
+                "GSI1PK": "CATALOG#ALL",
+                "GSI1SK": f"PRODUCT#{category}#{name}#{product_id}",
+            }
+        )
+        catalog_index_items.append(
+            {
+                **catalog_projection,
+                "PK": f"CATEGORY#{category}",
+                "SK": f"PRODUCT#{product_id}",
+                "entity_type": "CATEGORY_PRODUCT",
+                "GSI1PK": f"CATEGORY#{category}",
+                "GSI1SK": f"PRODUCT#{name}#{product_id}",
+            }
+        )
+
+    category_items = [
+        {
+            "PK": "CATEGORIES",
+            "SK": f"CATEGORY#{category}",
+            "entity_type": "CATEGORY",
+            "name": category,
+            "slug": category.lower().replace(" ", "-"),
+            "count": count,
+        }
+        for category, count in sorted(categories.items())
+    ]
+
+    items += catalog_index_items + category_items
     return items
 
 
@@ -1043,6 +1159,12 @@ def print_summary(items: list[dict]):
                 types["Ítems de orden (ORDER#x / ITEM#x)"] += 1
         elif pk.startswith("PRODUCT#"):
             types["Productos (PRODUCT#x / #METADATA)"] += 1
+        elif pk == "CATALOG#ALL":
+            types["Índice catálogo total (CATALOG#ALL)"] += 1
+        elif pk.startswith("CATEGORY#"):
+            types["Índice catálogo por categoría (CATEGORY#x)"] += 1
+        elif pk == "CATEGORIES":
+            types["Categorías dinámicas"] += 1
 
     print("\n  Resumen de ítems insertados:")
     for k, v in sorted(types.items()):
