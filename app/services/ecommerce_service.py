@@ -9,6 +9,7 @@ from app.db.redis import get_redis_cache
 from app.models.ecommerce import CheckoutRequest, CheckoutResponse, OrderDetails, OrderItem, OrderSummary, UserProfile
 from app.repositories.ecommerce_table import ECommerceTable
 from app.repositories.product_repo import ProductRepository
+from app.services.cart_service import CartService
 
 
 class ECommerceService:
@@ -102,7 +103,11 @@ class ECommerceService:
         if not profile:
             raise ValueError("User not found")
 
-        if not checkout_request.items:
+        cart_service = CartService()
+        cart = cart_service.get_cart(user_id)
+        checkout_items = cart.items
+
+        if not checkout_items:
             raise ValueError("Cart is empty")
 
         now = datetime.now(timezone.utc)
@@ -120,16 +125,10 @@ class ECommerceService:
         stock_reservations: dict[str, int] = {}
         total = Decimal("0")
 
-        for index, item in enumerate(checkout_request.items, start=1):
+        for index, item in enumerate(checkout_items, start=1):
             quantity = self._coerce_int(item.quantity, default=1)
-            unit_price = self._coerce_decimal(self._first_present(item.unit_price, item.price, default="0"))
-            if unit_price <= 0:
-                catalog_item = self.product_repo.get_product(item.product_id) or {}
-                unit_price = self._coerce_decimal(catalog_item.get("price"))
-
-            subtotal = self._coerce_decimal(item.subtotal)
-            if subtotal <= 0:
-                subtotal = unit_price * Decimal(quantity)
+            unit_price = self._coerce_decimal(item.unit_price)
+            subtotal = unit_price * Decimal(quantity)
 
             total += subtotal
 
@@ -159,7 +158,7 @@ class ECommerceService:
                 }
             )
 
-        shipping_cost = self._coerce_decimal(checkout_request.shipping_cost)
+        shipping_cost = self._coerce_decimal(cart.shipping_estimate)
         total += shipping_cost
 
         for product_id, quantity in stock_reservations.items():
@@ -209,6 +208,7 @@ class ECommerceService:
 
         self.table.save_order_records(records)
         self._invalidate_order_caches(user_id, order_id)
+        cart_service.clear_cart(user_id)
 
         return CheckoutResponse(user_id=user_id, order_summary=summary, order_details=details, items=order_items)
 
