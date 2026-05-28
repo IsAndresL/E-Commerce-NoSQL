@@ -63,7 +63,7 @@ class RedisCache:
 
 	def set_json(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
 		try:
-			self.client.set(key, json.dumps(value, ensure_ascii=False), ex=ttl_seconds)
+			self.client.set(key, json.dumps(value, ensure_ascii=False, default=str), ex=ttl_seconds)
 		except RedisError:
 			return
 
