@@ -137,12 +137,31 @@ function AuthenticatedApp({ page, setPage, cartOpen, setCartOpen, userId, onLogo
       </main>
 
       <footer className="app-footer">
-        <div className="footer-links">
-          <button>Soporte 24/7</button>
-          <button>Mercado Pago</button>
-          <button>PayU</button>
+        <div className="footer-grid">
+          <section className="footer-brand-block">
+            <span className="footer-brand-name">EcoCart</span>
+            <p>
+              Una tienda simple y rápida para comprar, revisar tu carrito y seguir tus pedidos en un solo lugar.
+            </p>
+          </section>
+
+          <section className="footer-links-block">
+            <h3>Explorar</h3>
+            <button onClick={() => setPage("store")}>Ir a la tienda</button>
+            <button onClick={() => setCartOpen(true)}>Ver carrito</button>
+            <button onClick={() => setPage("dashboard")}>Mis pedidos</button>
+          </section>
+
+          <section className="footer-info-block">
+            <h3>Información</h3>
+            <p>Descubre productos increíbles al mejor precio.</p>
+            <p>Compra en minutos y recibe seguimiento de tus pedidos fácilmente.</p>
+          </section>
         </div>
-        <span>© 2026 EcoCart Inc.</span>
+
+        <div className="footer-bottom">
+          <span>© 2026 EcoCart Inc.</span>
+        </div>
       </footer>
 
       {cartOpen && (
